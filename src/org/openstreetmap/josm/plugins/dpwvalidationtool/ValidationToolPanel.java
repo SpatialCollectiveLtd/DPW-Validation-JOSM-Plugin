@@ -565,8 +565,24 @@ public class ValidationToolPanel extends ToggleDialog {
 
                 if (lastRc == HttpURLConnection.HTTP_OK) {
                     final String resp = lastResp;
-                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
-                    return;
+                    // Interpret response: prefer JSON or explicit success markers
+                    String trimmed = resp == null ? "" : resp.trim();
+                    boolean looksLikeJson = trimmed.startsWith("{") || trimmed.startsWith("[");
+                    boolean containsOk = trimmed.toLowerCase().contains("ok") || trimmed.toLowerCase().contains("success");
+                    boolean containsError = trimmed.toLowerCase().contains("error") || trimmed.toLowerCase().contains("exception") || trimmed.toLowerCase().contains("stacktrace");
+                    boolean looksLikeHtml = trimmed.startsWith("<");
+                    if (looksLikeHtml || containsError) {
+                        // Treat as failure
+                        lastResp = resp;
+                        lastRc = HttpURLConnection.HTTP_INTERNAL_ERROR;
+                    } else if (looksLikeJson || containsOk) {
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
+                        return;
+                    } else {
+                        // Unknown plain-text response; show as success but warn
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Submission sent — server returned non-JSON response:\n" + resp, "Submitted (uncertain)", JOptionPane.WARNING_MESSAGE));
+                        return;
+                    }
                 }
             } catch (Exception e) {
                 lastEx = e;
@@ -601,8 +617,43 @@ public class ValidationToolPanel extends ToggleDialog {
                 lastResp = response2.toString();
                 if (lastRc == HttpURLConnection.HTTP_OK) {
                     final String resp = lastResp;
-                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
-                    return;
+                    String trimmed = resp == null ? "" : resp.trim();
+                    boolean looksLikeJson = trimmed.startsWith("{") || trimmed.startsWith("[");
+                    boolean containsOk = trimmed.toLowerCase().contains("ok") || trimmed.toLowerCase().contains("success");
+                    boolean containsError = trimmed.toLowerCase().contains("error") || trimmed.toLowerCase().contains("exception") || trimmed.toLowerCase().contains("stacktrace");
+                    boolean looksLikeHtml = trimmed.startsWith("<");
+                    if (looksLikeHtml || containsError) {
+                        lastResp = resp;
+                        lastRc = HttpURLConnection.HTTP_INTERNAL_ERROR;
+                    } else if (looksLikeJson || containsOk) {
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
+                        return;
+                    } else {
+                        // If the response is of the form payload=..., attempt to decode and inspect
+                        String lower = resp == null ? "" : resp;
+                        int idx = lower.indexOf("payload=");
+                        if (idx >= 0) {
+                            String suffix = resp.substring(idx + "payload=".length());
+                            try {
+                                String decoded = java.net.URLDecoder.decode(suffix, StandardCharsets.UTF_8.name());
+                                String dtrim = decoded.trim();
+                                if (dtrim.startsWith("{") || dtrim.startsWith("[") || dtrim.toLowerCase().contains("ok")) {
+                                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Data submitted successfully!\nResponse: " + decoded, "Success", JOptionPane.INFORMATION_MESSAGE));
+                                    return;
+                                } else {
+                                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Submission sent — server returned non-JSON payload:\n" + decoded, "Submitted (uncertain)", JOptionPane.WARNING_MESSAGE));
+                                    return;
+                                }
+                            } catch (Exception e) {
+                                // fall through to failure
+                                lastResp = resp;
+                                lastRc = HttpURLConnection.HTTP_INTERNAL_ERROR;
+                            }
+                        } else {
+                            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Submission sent — server returned non-JSON response:\n" + resp, "Submitted (uncertain)", JOptionPane.WARNING_MESSAGE));
+                            return;
+                        }
+                    }
                 }
             } catch (Exception e) {
                 lastEx = e;
