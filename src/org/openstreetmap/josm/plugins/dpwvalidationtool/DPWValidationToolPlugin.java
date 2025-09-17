@@ -16,22 +16,24 @@ public class DPWValidationToolPlugin extends Plugin {
 
     public DPWValidationToolPlugin(PluginInformation info) {
         super(info);
-        try {
-            Logging.info("DPWValidationTool: constructing plugin");
-            validationToolPanel = new ValidationToolPanel();
-            Logging.info("DPWValidationTool: constructed ValidationToolPanel");
-        } catch (Throwable t) {
-            Logging.error("DPWValidationTool: plugin construction failed: " + t);
-            Logging.trace(t);
-        }
+        // Defer constructing the UI panel until a MapFrame is available.
+        // Creating a ToggleDialog too early can cause a NullPointerException
+        // because internal titleBar fields are initialized later by JOSM.
+        validationToolPanel = null;
 
         // Register a Tools menu action and toolbar button to show the dialog explicitly
         try {
             javax.swing.JMenuItem mi = new javax.swing.JMenuItem(new AbstractAction("DPW Validation Tool") {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    if (validationToolPanel != null) {
+                    try {
+                        if (validationToolPanel == null) {
+                            validationToolPanel = new ValidationToolPanel();
+                        }
                         MainApplication.getMap().addToggleDialog(validationToolPanel);
+                    } catch (Throwable ex) {
+                        Logging.error("DPWValidationTool: failed to show dialog from menu action: " + ex);
+                        Logging.trace(ex);
                     }
                 }
             });

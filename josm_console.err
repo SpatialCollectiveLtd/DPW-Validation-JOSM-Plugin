@@ -1,469 +1,99 @@
-2025-09-16 15:56:52.308 WARNING: extended font config - overriding 'filename.Malgun_Gothic=malgun.ttf' with 'MALGUN.TTF'
-2025-09-16 15:56:52.312 WARNING: extended font config - overriding 'filename.Myanmar_Text=mmrtext.ttf' with 'MMRTEXT.TTF'
-2025-09-16 15:56:52.313 WARNING: extended font config - overriding 'filename.Mongolian_Baiti=monbaiti.ttf' with 'MONBAITI.TTF'
-2025-09-16 15:56:52.858 SEVERE: java.security.KeyStoreException: Windows-ROOT not found. Cause: java.security.NoSuchAlgorithmException: Windows-ROOT KeyStore not available
-java.security.KeyStoreException: Windows-ROOT not found
-	at java.base/java.security.KeyStore.getInstance(Unknown Source)
-	at org.openstreetmap.josm.tools.PlatformHookWindows.getRootKeystore(PlatformHookWindows.java:356)
-	at org.openstreetmap.josm.tools.PlatformHookWindows.getX509Certificate(PlatformHookWindows.java:366)
-	at org.openstreetmap.josm.io.CertificateAmendment.addMissingCertificates(CertificateAmendment.java:220)
-	at org.openstreetmap.josm.gui.MainApplication.mainJOSM(MainApplication.java:927)
-	at org.openstreetmap.josm.gui.MainApplication$3.processArguments(MainApplication.java:280)
-	at org.openstreetmap.josm.gui.MainApplication.main(MainApplication.java:766)
-Caused by: java.security.NoSuchAlgorithmException: Windows-ROOT KeyStore not available
-	at java.base/sun.security.jca.GetInstance.getInstance(Unknown Source)
-	at java.base/java.security.Security.getImpl(Unknown Source)
-	... 7 more
+{{{
+Revision:19439
+Build-Date:2025-09-01 09:22:37
 
-2025-09-16 15:56:53.091 WARNING: Missing plugin main version in plugin DPWValidationTool
-2025-09-16 15:56:53.968 WARNING: Missing plugin main version in plugin DPWValidationTool
-2025-09-16 16:02:21.690 WARNING: java.net.SocketTimeoutException: Connect timed out
-java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.connect(Unknown Source)
-	at org.openstreetmap.josm.tools.Http1Client.performConnection(Http1Client.java:78)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:162)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:136)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:199)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:142)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:126)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:90)
-	at org.openstreetmap.josm.io.OsmServerReader.fetchData(OsmServerReader.java:428)
-	at org.openstreetmap.josm.io.OsmServerUserInfoReader.fetchUserInfo(OsmServerUserInfoReader.java:170)
-	at org.openstreetmap.josm.io.MessageNotifier$Worker.run(MessageNotifier.java:84)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Unknown Source)
-	at java.base/java.util.concurrent.FutureTask.runAndReset(Unknown Source)
-	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
-	at java.base/java.lang.Thread.run(Unknown Source)
+Identification: JOSM/1.5 (19439 en) Windows 11 64-Bit
+OS Build number: Windows 10 Pro 24H2 (26100)
+Memory Usage: 400 MB / 6028 MB (108 MB allocated, but free)
+Java version: 21.0.8+9-LTS, Azul Systems, Inc., OpenJDK 64-Bit Server VM
+Look and Feel: com.sun.java.swing.plaf.windows.WindowsLookAndFeel
+Screen: \Display0 1366x768x32bpp@60Hz (scaling 1.00×1.00)
+Maximum Screen Size: 1366×768
+Best cursor sizes: 16×16→32×32, 32×32→32×32
+System property file.encoding: UTF-8
+System property sun.jnu.encoding: Cp1252
+Locale info: en_US
+Numbers with default locale: 1234567890 -> 1234567890
+VM arguments: [-Djpackage.app-version=1.5.19439, -XX:MaxRAMPercentage=75.0, --add-modules=java.scripting,java.sql,javafx.controls,javafx.media,javafx.swing,javafx.web, --add-exports=java.base/sun.security.action=ALL-UNNAMED, --add-exports=java.desktop/com.sun.imageio.plugins.jpeg=ALL-UNNAMED, --add-exports=java.desktop/com.sun.imageio.spi=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.nio=ALL-UNNAMED, --add-opens=java.base/jdk.internal.loader=ALL-UNNAMED, --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED, --add-opens=java.desktop/javax.imageio.spi=ALL-UNNAMED, --add-opens=java.desktop/javax.swing.text.html=ALL-UNNAMED, --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED, -Djpackage.app-path=%UserProfile%\AppData\Local\JOSM\JOSM.exe]
+Dataset consistency test: No problems found
 
-2025-09-16 16:02:21.692 SEVERE: java.net.SocketTimeoutException: Connect timed out
-java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.connect(Unknown Source)
-	at org.openstreetmap.josm.tools.Http1Client.performConnection(Http1Client.java:78)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:162)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:136)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:199)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:142)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:126)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:90)
-	at org.openstreetmap.josm.io.OsmServerReader.fetchData(OsmServerReader.java:428)
-	at org.openstreetmap.josm.io.OsmServerUserInfoReader.fetchUserInfo(OsmServerUserInfoReader.java:170)
-	at org.openstreetmap.josm.io.MessageNotifier$Worker.run(MessageNotifier.java:84)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Unknown Source)
-	at java.base/java.util.concurrent.FutureTask.runAndReset(Unknown Source)
-	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
-	at java.base/java.lang.Thread.run(Unknown Source)
+Plugins:
++ DPWValidationTool (1.0.0)
 
-2025-09-16 16:02:21.693 WARNING: org.openstreetmap.josm.io.OsmTransferException: Could not connect to the OSM server. Please check your internet connection.. Cause: java.net.SocketTimeoutException: Connect timed out
-org.openstreetmap.josm.io.OsmTransferException: Could not connect to the OSM server. Please check your internet connection.
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:204)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:142)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:126)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:90)
-	at org.openstreetmap.josm.io.OsmServerReader.fetchData(OsmServerReader.java:428)
-	at org.openstreetmap.josm.io.OsmServerUserInfoReader.fetchUserInfo(OsmServerUserInfoReader.java:170)
-	at org.openstreetmap.josm.io.MessageNotifier$Worker.run(MessageNotifier.java:84)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Unknown Source)
-	at java.base/java.util.concurrent.FutureTask.runAndReset(Unknown Source)
-	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
-	at java.base/java.lang.Thread.run(Unknown Source)
-Caused by: java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.connect(Unknown Source)
-	at org.openstreetmap.josm.tools.Http1Client.performConnection(Http1Client.java:78)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:162)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:136)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:199)
-	... 12 more
+Last errors/warnings:
+- 00000.562 W: extended font config - overriding 'filename.Malgun_Gothic=malgun.ttf' with 'MALGUN.TTF'
+- 00000.566 W: extended font config - overriding 'filename.Myanmar_Text=mmrtext.ttf' with 'MMRTEXT.TTF'
+- 00000.567 W: extended font config - overriding 'filename.Mongolian_Baiti=monbaiti.ttf' with 'MONBAITI.TTF'
+- 00001.034 E: java.security.KeyStoreException: Windows-ROOT not found. Cause: java.security.NoSuchAlgorithmException: Windows-ROOT KeyStore not available
+- 00001.303 W: Missing plugin main version in plugin DPWValidationTool
+- 00002.038 W: Missing plugin main version in plugin DPWValidationTool
+- 00115.743 E: DPWValidationTool: mapFrameInitialized failed: java.lang.NullPointerException: Cannot invoke "org.openstreetmap.josm.gui.dialogs.ToggleDialog$TitleBar.setVisible(boolean)" because "this.titleBar" is null
+- 00153.557 E: Handled by bug report queue: java.lang.NullPointerException: Cannot invoke "org.openstreetmap.josm.gui.dialogs.ToggleDialog$TitleBar.setVisible(boolean)" because "this.titleBar" is null
 
-2025-09-16 16:03:37.262 WARNING: java.net.SocketTimeoutException: Connect timed out
-java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.connect(Unknown Source)
-	at org.openstreetmap.josm.tools.Http1Client.performConnection(Http1Client.java:78)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:162)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:136)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:199)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:142)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:126)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:90)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:73)
-	at org.openstreetmap.josm.io.BoundingBoxDownloader.parseOsm(BoundingBoxDownloader.java:213)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.parseDataSet(DownloadOsmTask.java:470)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.realRun(DownloadOsmTask.java:478)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.doRealRun(PleaseWaitRunnable.java:94)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.run(PleaseWaitRunnable.java:142)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Unknown Source)
-	at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
-	at java.base/java.lang.Thread.run(Unknown Source)
 
-2025-09-16 16:03:37.263 SEVERE: java.net.SocketTimeoutException: Connect timed out
-java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.connect(Unknown Source)
-	at org.openstreetmap.josm.tools.Http1Client.performConnection(Http1Client.java:78)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:162)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:136)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:199)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:142)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:126)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:90)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:73)
-	at org.openstreetmap.josm.io.BoundingBoxDownloader.parseOsm(BoundingBoxDownloader.java:213)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.parseDataSet(DownloadOsmTask.java:470)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.realRun(DownloadOsmTask.java:478)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.doRealRun(PleaseWaitRunnable.java:94)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.run(PleaseWaitRunnable.java:142)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Unknown Source)
-	at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
-	at java.base/java.lang.Thread.run(Unknown Source)
-
-2025-09-16 16:03:37.306 SEVERE: org.openstreetmap.josm.io.OsmTransferException: Could not connect to the OSM server. Please check your internet connection.. Cause: java.net.SocketTimeoutException: Connect timed out
-org.openstreetmap.josm.io.OsmTransferException: Could not connect to the OSM server. Please check your internet connection.
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:204)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:142)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:126)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:90)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:73)
-	at org.openstreetmap.josm.io.BoundingBoxDownloader.parseOsm(BoundingBoxDownloader.java:213)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.parseDataSet(DownloadOsmTask.java:470)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.realRun(DownloadOsmTask.java:478)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.doRealRun(PleaseWaitRunnable.java:94)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.run(PleaseWaitRunnable.java:142)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Unknown Source)
-	at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
-	at java.base/java.lang.Thread.run(Unknown Source)
-Caused by: java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.connect(Unknown Source)
-	at org.openstreetmap.josm.tools.Http1Client.performConnection(Http1Client.java:78)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:162)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:136)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:199)
-	... 14 more
-
-2025-09-16 16:03:37.316 SEVERE: IO Exception - <html>Failed to upload data to or download data from<br>'https://api.openstreetmap.org/api/0.6/map?bbox=36.920274,-1.274708,36.924766,-1.270217'<br>due to a problem with transferring data.<br>Details (untranslated): Connect timed out</html>
-2025-09-16 16:03:37.340 SEVERE: org.openstreetmap.josm.io.OsmTransferException: Could not connect to the OSM server. Please check your internet connection.. Cause: java.net.SocketTimeoutException: Connect timed out
-org.openstreetmap.josm.io.OsmTransferException: Could not connect to the OSM server. Please check your internet connection.
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:204)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:142)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:126)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:90)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:73)
-	at org.openstreetmap.josm.io.BoundingBoxDownloader.parseOsm(BoundingBoxDownloader.java:213)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.parseDataSet(DownloadOsmTask.java:470)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.realRun(DownloadOsmTask.java:478)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.doRealRun(PleaseWaitRunnable.java:94)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.run(PleaseWaitRunnable.java:142)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Unknown Source)
-	at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
-	at java.base/java.lang.Thread.run(Unknown Source)
-Caused by: java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.connect(Unknown Source)
-	at org.openstreetmap.josm.tools.Http1Client.performConnection(Http1Client.java:78)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:162)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:136)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:199)
-	... 14 more
-
-2025-09-16 16:03:37.341 SEVERE: org.openstreetmap.josm.io.OsmTransferException: Could not connect to the OSM server. Please check your internet connection.. Cause: java.net.SocketTimeoutException: Connect timed out
-org.openstreetmap.josm.io.OsmTransferException: Could not connect to the OSM server. Please check your internet connection.
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:204)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:142)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:126)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:90)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:73)
-	at org.openstreetmap.josm.io.BoundingBoxDownloader.parseOsm(BoundingBoxDownloader.java:213)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.parseDataSet(DownloadOsmTask.java:470)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.realRun(DownloadOsmTask.java:478)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.doRealRun(PleaseWaitRunnable.java:94)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.run(PleaseWaitRunnable.java:142)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Unknown Source)
-	at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
-	at java.base/java.lang.Thread.run(Unknown Source)
-Caused by: java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.connect(Unknown Source)
-	at org.openstreetmap.josm.tools.Http1Client.performConnection(Http1Client.java:78)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:162)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:136)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:199)
-	... 14 more
-
-2025-09-16 16:03:37.342 SEVERE: org.openstreetmap.josm.io.OsmTransferException: Failed to upload data to or download data from<br>'https://api.openstreetmap.org/api/0.6/map?bbox=36.920274,-1.274708,36.924766,-1.270217'<br>due to a problem with transferring data.<br>Details (untranslated): Connect timed out. Cause: org.openstreetmap.josm.io.OsmTransferException: Could not connect to the OSM server. Please check your internet connection.. Cause: java.net.SocketTimeoutException: Connect timed out
-org.openstreetmap.josm.io.OsmTransferException: Failed to upload data to or download data from<br>'https://api.openstreetmap.org/api/0.6/map?bbox=36.920274,-1.274708,36.924766,-1.270217'<br>due to a problem with transferring data.<br>Details (untranslated): Connect timed out
-	at org.openstreetmap.josm.io.remotecontrol.handler.LoadAndZoomHandler.lambda$performDownload$1(LoadAndZoomHandler.java:237)
-	at java.desktop/java.awt.event.InvocationEvent.dispatch(Unknown Source)
-	at java.desktop/java.awt.EventQueue.dispatchEventImpl(Unknown Source)
-	at java.desktop/java.awt.EventQueue$4.run(Unknown Source)
-	at java.desktop/java.awt.EventQueue$4.run(Unknown Source)
-	at java.base/java.security.AccessController.doPrivileged(Unknown Source)
-	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(Unknown Source)
-	at java.desktop/java.awt.EventQueue.dispatchEvent(Unknown Source)
-	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(Unknown Source)
-	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(Unknown Source)
-	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(Unknown Source)
-	at java.desktop/java.awt.WaitDispatchSupport$2.run(Unknown Source)
-	at java.desktop/java.awt.WaitDispatchSupport$4.run(Unknown Source)
-	at java.desktop/java.awt.WaitDispatchSupport$4.run(Unknown Source)
-	at java.base/java.security.AccessController.doPrivileged(Unknown Source)
-	at java.desktop/java.awt.WaitDispatchSupport.enter(Unknown Source)
-	at java.desktop/java.awt.Dialog.show(Unknown Source)
-	at java.desktop/java.awt.Component.show(Unknown Source)
-	at java.desktop/java.awt.Component.setVisible(Unknown Source)
-	at java.desktop/java.awt.Window.setVisible(Unknown Source)
-	at java.desktop/java.awt.Dialog.setVisible(Unknown Source)
-	at org.openstreetmap.josm.gui.HelpAwareOptionPane.doShowOptionDialog(HelpAwareOptionPane.java:359)
-	at org.openstreetmap.josm.gui.HelpAwareOptionPane.showOptionDialog(HelpAwareOptionPane.java:291)
-	at org.openstreetmap.josm.gui.HelpAwareOptionPane.showOptionDialog(HelpAwareOptionPane.java:374)
-	at org.openstreetmap.josm.gui.ExceptionDialogUtil.showErrorDialog(ExceptionDialogUtil.java:44)
-	at org.openstreetmap.josm.gui.ExceptionDialogUtil.explainNestedIOException(ExceptionDialogUtil.java:140)
-	at org.openstreetmap.josm.gui.ExceptionDialogUtil.explainOsmTransferException(ExceptionDialogUtil.java:412)
-	at org.openstreetmap.josm.gui.ExceptionDialogUtil.explainException(ExceptionDialogUtil.java:506)
-	at org.openstreetmap.josm.actions.downloadtasks.PostDownloadHandler.lambda$run$1(PostDownloadHandler.java:109)
-	at java.desktop/java.awt.event.InvocationEvent.dispatch(Unknown Source)
-	at java.desktop/java.awt.EventQueue.dispatchEventImpl(Unknown Source)
-	at java.desktop/java.awt.EventQueue$4.run(Unknown Source)
-	at java.desktop/java.awt.EventQueue$4.run(Unknown Source)
-	at java.base/java.security.AccessController.doPrivileged(Unknown Source)
-	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(Unknown Source)
-	at java.desktop/java.awt.EventQueue.dispatchEvent(Unknown Source)
-	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(Unknown Source)
-	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(Unknown Source)
-	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(Unknown Source)
-	at java.desktop/java.awt.EventDispatchThread.pumpEvents(Unknown Source)
-	at java.desktop/java.awt.EventDispatchThread.pumpEvents(Unknown Source)
-	at java.desktop/java.awt.EventDispatchThread.run(Unknown Source)
-Caused by: org.openstreetmap.josm.io.OsmTransferException: Could not connect to the OSM server. Please check your internet connection.
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:204)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:142)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:126)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:90)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStream(OsmServerReader.java:73)
-	at org.openstreetmap.josm.io.BoundingBoxDownloader.parseOsm(BoundingBoxDownloader.java:213)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.parseDataSet(DownloadOsmTask.java:470)
-	at org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask$DownloadTask.realRun(DownloadOsmTask.java:478)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.doRealRun(PleaseWaitRunnable.java:94)
-	at org.openstreetmap.josm.gui.PleaseWaitRunnable.run(PleaseWaitRunnable.java:142)
-	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Unknown Source)
-	at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
-	at java.base/java.lang.Thread.run(Unknown Source)
-Caused by: java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.connect(Unknown Source)
-	at org.openstreetmap.josm.tools.Http1Client.performConnection(Http1Client.java:78)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:162)
-	at org.openstreetmap.josm.tools.HttpClient.connect(HttpClient.java:136)
-	at org.openstreetmap.josm.io.OsmServerReader.getInputStreamRaw(OsmServerReader.java:199)
-	... 14 more
-
-2025-09-16 16:03:37.349 SEVERE: IO Exception - <html>Failed to upload data to or download data from<br>'https://api.openstreetmap.org/api/0.6/'<br>due to a problem with transferring data.<br>Details (untranslated): Connect timed out</html>
-2025-09-16 16:04:26.811 SEVERE: java.net.SocketTimeoutException: Connect timed out
-java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream(Unknown Source)
-	at java.base/java.net.HttpURLConnection.getResponseCode(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.getResponseCode(Unknown Source)
-	at org.openstreetmap.josm.plugins.dpwvalidationtool.ValidationToolPanel.fetchMapperFromTaskingManager(ValidationToolPanel.java:475)
-	at org.openstreetmap.josm.plugins.dpwvalidationtool.ValidationToolPanel.lambda$setupUI$16(ValidationToolPanel.java:263)
-	at java.base/java.lang.Thread.run(Unknown Source)
-
-2025-09-16 16:05:37.501 SEVERE: java.net.SocketTimeoutException: Connect timed out
-java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream(Unknown Source)
-	at java.base/java.net.HttpURLConnection.getResponseCode(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.getResponseCode(Unknown Source)
-	at org.openstreetmap.josm.plugins.dpwvalidationtool.ValidationToolPanel.fetchMapperFromTaskingManager(ValidationToolPanel.java:475)
-	at org.openstreetmap.josm.plugins.dpwvalidationtool.ValidationToolPanel.lambda$setupUI$16(ValidationToolPanel.java:263)
-	at java.base/java.lang.Thread.run(Unknown Source)
-
-2025-09-16 16:05:53.817 SEVERE: java.net.SocketTimeoutException: Connect timed out
-java.net.SocketTimeoutException: Connect timed out
-	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(Unknown Source)
-	at java.base/sun.nio.ch.NioSocketImpl.connect(Unknown Source)
-	at java.base/java.net.SocksSocketImpl.connect(Unknown Source)
-	at java.base/java.net.Socket.connect(Unknown Source)
-	at java.base/sun.security.ssl.SSLSocketImpl.connect(Unknown Source)
-	at java.base/sun.net.NetworkClient.doConnect(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.http.HttpClient.openServer(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsClient.New(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(Unknown Source)
-	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream0(Unknown Source)
-	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream(Unknown Source)
-	at java.base/java.net.HttpURLConnection.getResponseCode(Unknown Source)
-	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.getResponseCode(Unknown Source)
-	at org.openstreetmap.josm.plugins.dpwvalidationtool.ValidationToolPanel.fetchMapperFromTaskingManager(ValidationToolPanel.java:475)
-	at org.openstreetmap.josm.plugins.dpwvalidationtool.ValidationToolPanel.lambda$setupUI$16(ValidationToolPanel.java:263)
-	at java.base/java.lang.Thread.run(Unknown Source)
-
+cache.capabilities1637351842=1758015156
+cache.motd.html=1758015159
+cache.motd.html.java=21.0.8
+cache.motd.html.lang=En:
+cache.motd.html.version=19439
+changesetdialog.lastHeight=0
+commandstack.lastHeight=0
+conflict.lastHeight=0
+draw.rawgps.lines=-1
+expert=true
+filter.lastHeight=0
+gui.geometry=x=-8,y=-8,width=1000,height=740
+gui.maximized=true
+imagery.entries=[{max-zoom=22, min-zoom=1, noTileHeaders={"X-VE-Tile-Info":["no-tile"]}, noTileChecksums={"MD5":["c13269481c73de6e18589f9fbc3bdf7e"]}, metadataHeaders={"X-VE-TILEMETA-CaptureDatesRange":"Capture Date"}, transparent=true, minimumTileExpire=3600, name=Bing aerial imagery, id=Bing, type=bing, url=https://www.bing.com/maps/, permission-reference-url=https://wiki.openstreetmap.org/wiki/Bing_Maps, cookies=, icon=data:image/png;base64,iVBORw0..., customHttpHeaders={}, category=photo},
+  {max-zoom=22, noTileHeaders={"Etag":["\"10i954m13i2\""]}, noTileChecksums={"MD5":["f27d9de7f80c13501f470595e327aa6d"]}, transparent=true, minimumTileExpire=3600, name=Esri World Imagery, id=EsriWorldImagery, type=tms, url=https://{switch:services,server}.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{zoom}/{y}/{x}, attribution-text=Terms & Feedback, attribution-url=https://wiki.openstreetmap.org/wiki/Esri, cookies=, icon=data:image/png;base64,iVBORw0..., customHttpHeaders={}, category=photo},
+  {max-zoom=22, transparent=true, minimumTileExpire=3600, name=Esri World Imagery (Clarity) Beta, id=EsriWorldImageryClarity, type=tms, url=https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{zoom}/{y}/{x}, attribution-text=Terms & Feedback, attribution-url=https://wiki.openstreetmap.org/wiki/Esri, permission-reference-url=https://github.com/osmlab/editor-layer-index/pull/358#issuecomment-361416110, cookies=, icon=data:image/png;base64,iVBORw0..., description=Esri archive imagery that may be clearer and more accurate than the default layer., customHttpHeaders={}, category=photo},
+  {max-zoom=22, noTileHeaders={"ETag":["\"336b022ed883bc72347a637634e490d4\"|\"067736a547cafe90014b4e59b6510abe\"|\"ee1f6802b0234046b553cbbc672ac7d9\"|\"9f5a2f1d7cc131e58befc2052c71c827\""]}, noTileChecksums={"MD5":["58e78313d04adf0ea64b8de8590c3d46"]}, transparent=true, minimumTileExpire=3600, name=Mapbox Satellite, id=Mapbox, type=tms, url=https://{switch:a,b,c,d}.tiles.mapbox.com/v4/mapbox.satellite/{zoom}/{x}/{y}.jpg?access_token={apikey}, attribution-text=Terms & Feedback, attribution-url=https://www.mapbox.com/about/maps/, permission-reference-url=https://wiki.openstreetmap.org/wiki/Vertical_Aerial_Photographs#DigitalGlobe_.2F_MapBox, cookies=, icon=data:image/png;base64,iVBORw0..., customHttpHeaders={"Referer":"https://josm.openstreetmap.de/"}, category=photo},
+  {max-zoom=19, valid-georeference=true, transparent=true, minimumTileExpire=3600, name=OpenStreetMap Carto (Standard), id=standard, type=tms, url=https://tile.openstreetmap.org/{zoom}/{x}/{y}.png, attribution-text=© OpenStreetMap contributors, attribution-url=https://www.openstreetmap.org/, permission-reference-url=https://wiki.osmfoundation.org/wiki/Terms_of_Use, cookies=, icon=data:image/png;base64,iVBORw0..., customHttpHeaders={}, category=osmbasedmap}
+]
+imagery.layers.default=[Bing, EsriWorldImagery, EsriWorldImageryClarity, Mapbox, standard]
+josm.version=19439
+layerlist.lastHeight=180
+mappaint.renderer-class-name=org.openstreetmap.josm.data.osm.visitor.paint.StyledMapRenderer
+mappaint.style.known-defaults=[resource://styles/standard/elemstyles.mapcss]
+mapstyle.lastHeight=0
+minimap.lastHeight=0
+mirror.https://josm.openstreetmap.de/maps=[1758015161688, <josm.cache>\mirror_https___josm.openstreetmap.de_maps]
+mirror.https://josm.openstreetmap.de/remote/geofabrik-index-v1-nogeom.json=[1758015154849, <josm.cache>\mirror_https___josm.openstreetmap.de_remote_geofabrik-index-v1-nogeom.json]
+mirror.https://josm.openstreetmap.de/tested=[1758093313177, <josm.cache>\mirror_https___josm.openstreetmap.de_tested]
+notes/note_open.lastHeight=0
+org.openstreetmap.josm.gui.dialogs.properties.TagEditHelper$AddTagsDialog.geometry=x=539,y=257,width=287,height=254
+org.openstreetmap.josm.gui.download.DownloadDialog.geometry=x=183,y=84,width=1000,height=600
+org.openstreetmap.josm.gui.help.HelpBrowser.geometry=x=0,y=0,width=600,height=400
+org.openstreetmap.josm.gui.history.HistoryBrowserDialogManager.geometry=x=258,y=134,width=850,height=500
+org.openstreetmap.josm.gui.io.UploadDialog.geometry=x=283,y=84,width=800,height=600
+org.openstreetmap.josm.gui.preferences.PreferenceDialog.geometry=x=333,y=33,width=800,height=701
+osm-download.bounds=-1.274708;36.920274;-1.270217;36.924766
+osm-server.upload-strategy=singlerequest
+pluginmanager.lastupdate=1758015226083
+pluginmanager.version=19439
+plugins=[DPWValidationTool]
+preferences.reset.draw.rawgps.lines=true
+properties.recent-tags=[building, yes]
+propertiesdialog.lastHeight=20
+propertiesdialog.minimized=true
+relationlist.lastHeight=0
+relationlist.visible=false
+remotecontrol.always-confirm=true
+remotecontrol.enabled=true
+remotecontrol.new-layer=true
+remotecontrol.permission.authorization=true
+remotecontrol.permission.export=true
+remotecontrol.permission.open-files=true
+remotecontrol.permission.open-remote-files=true
+selectionlist.lastHeight=0
+selectionlist.visible=false
+sensitive.keys=[oauth.access-token.key, oauth.access-token.object.OAuth20.api.openstreetmap.org, oauth.access-token.parameters.OAuth20.api.openstreetmap.org, oauth.access-token.secret, osm-server.password, osm-server.username, proxy.pass, proxy.user, sensitive.keys]
+toggleDialogs.width=358
+upload.comment.history=[#hotosm-project-20235]
+upload.comment.last-used=1758026236
+upload.source.history=[Maxar-Standard, knowledge, survey, Bing]
+userlist.lastHeight=0
+validator.lastHeight=479
+validator.minimized=true
+validator.visible=true
+}}}
