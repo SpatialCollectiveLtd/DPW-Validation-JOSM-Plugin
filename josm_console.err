@@ -4,7 +4,7 @@ Build-Date:2025-09-01 09:22:37
 
 Identification: JOSM/1.5 (19439 en) Windows 11 64-Bit
 OS Build number: Windows 10 Pro 24H2 (26100)
-Memory Usage: 308 MB / 6028 MB (96 MB allocated, but free)
+Memory Usage: 412 MB / 6028 MB (118 MB allocated, but free)
 Java version: 21.0.8+9-LTS, Azul Systems, Inc., OpenJDK 64-Bit Server VM
 Look and Feel: com.sun.java.swing.plaf.windows.WindowsLookAndFeel
 Screen: \Display0 1366x768x32bpp@60Hz (scaling 1.00×1.00)
@@ -21,12 +21,12 @@ Plugins:
 + DPWValidationTool (1.0.0)
 
 Last errors/warnings:
-- 00000.592 W: extended font config - overriding 'filename.Malgun_Gothic=malgun.ttf' with 'MALGUN.TTF'
-- 00000.596 W: extended font config - overriding 'filename.Myanmar_Text=mmrtext.ttf' with 'MMRTEXT.TTF'
-- 00000.597 W: extended font config - overriding 'filename.Mongolian_Baiti=monbaiti.ttf' with 'MONBAITI.TTF'
-- 00001.243 E: java.security.KeyStoreException: Windows-ROOT not found. Cause: java.security.NoSuchAlgorithmException: Windows-ROOT KeyStore not available
-- 00001.588 W: Missing plugin main version in plugin DPWValidationTool
-- 00002.623 W: Missing plugin main version in plugin DPWValidationTool
+- 00000.619 W: extended font config - overriding 'filename.Malgun_Gothic=malgun.ttf' with 'MALGUN.TTF'
+- 00000.622 W: extended font config - overriding 'filename.Myanmar_Text=mmrtext.ttf' with 'MMRTEXT.TTF'
+- 00000.623 W: extended font config - overriding 'filename.Mongolian_Baiti=monbaiti.ttf' with 'MONBAITI.TTF'
+- 00001.248 E: java.security.KeyStoreException: Windows-ROOT not found. Cause: java.security.NoSuchAlgorithmException: Windows-ROOT KeyStore not available
+- 00001.572 W: Missing plugin main version in plugin DPWValidationTool
+- 00002.503 W: Missing plugin main version in plugin DPWValidationTool
 
 
 cache.capabilities1637351842=1758015156
@@ -92,6 +92,6 @@ upload.comment.last-used=1758026236
 upload.source.history=[Maxar-Standard, knowledge, survey, Bing]
 userlist.lastHeight=0
 validator.lastHeight=609
-validator.minimized=true
+validator.minimized=false
 validator.visible=true
 }}}

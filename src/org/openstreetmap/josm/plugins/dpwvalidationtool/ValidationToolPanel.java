@@ -47,6 +47,8 @@ public class ValidationToolPanel extends ToggleDialog {
     private volatile boolean allowForceSubmit = false;
     private volatile boolean isSending = false;
     private volatile boolean isFetchingMappers = false;
+    private JDialog sendingDialog;
+    private boolean submittedThisSession = false;
 
     private final String[] errorTypes = {
         "Hanging Nodes", "Overlapping Buildings", "Buildings Crossing Highway",
@@ -114,22 +116,22 @@ public class ValidationToolPanel extends ToggleDialog {
         gbc.weightx = 0;
         panel.add(new JLabel("Mapper Username:"), gbc);
 
+    // place combo and a small refresh button together in a panel so they don't stretch independently
     gbc.gridx = 1;
-    gbc.gridwidth = 2;
+    gbc.gridwidth = 3;
     gbc.fill = GridBagConstraints.HORIZONTAL;
     gbc.weightx = 1.0;
+    JPanel mapperPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
     mapperUsernameComboBox = new JComboBox<>();
-    panel.add(mapperUsernameComboBox, gbc);
-
-    // small refresh button next to the mapper combo to avoid widening the panel
-    gbc.gridx = 3;
-    gbc.gridwidth = 1;
-    gbc.fill = GridBagConstraints.NONE;
-    gbc.weightx = 0;
-    refreshMapperListButton = new JButton("\u21bb"); // unicode clockwise refresh
-    refreshMapperListButton.setPreferredSize(new Dimension(28, 22));
+    mapperUsernameComboBox.setPreferredSize(new Dimension(220, 24));
+    mapperPanel.add(mapperUsernameComboBox);
+    // small icon-only refresh button
+    refreshMapperListButton = new JButton("\u21bb");
+    refreshMapperListButton.setMargin(new Insets(2,2,2,2));
+    refreshMapperListButton.setPreferredSize(new Dimension(26, 22));
     refreshMapperListButton.setToolTipText("Refresh authorized mapper list");
-    panel.add(refreshMapperListButton, gbc);
+    mapperPanel.add(refreshMapperListButton);
+    panel.add(mapperPanel, gbc);
 
         // wire refresh mapper list button
         refreshMapperListButton.addActionListener(e -> {
@@ -139,11 +141,11 @@ public class ValidationToolPanel extends ToggleDialog {
                     fetchAuthorizedMappers();
                     SwingUtilities.invokeLater(() -> {
                         updateAuthStatus();
-                        JOptionPane.showMessageDialog(this, "Authorized mapper list refreshed (" + authorizedMappers.size() + ")", "Mapper List", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(null, "Authorized mapper list refreshed (" + authorizedMappers.size() + ")", "Mapper List", JOptionPane.INFORMATION_MESSAGE);
                     });
                 } catch (Exception ex) {
                     Logging.error(ex);
-                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this, "Failed to fetch mapper list: " + ex.getMessage(), "Mapper List Error", JOptionPane.ERROR_MESSAGE));
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Failed to fetch mapper list: " + ex.getMessage(), "Mapper List Error", JOptionPane.ERROR_MESSAGE));
                 } finally {
                     setFetchingMappers(false);
                 }
@@ -220,21 +222,12 @@ public class ValidationToolPanel extends ToggleDialog {
     forceSubmitButton = new JButton("Force");
     forceSubmitButton.setToolTipText("Force submit even if mapper not authorised (use with caution)");
 
-        JPanel actionPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints aGbc = new GridBagConstraints();
-        aGbc.insets = new Insets(2,4,2,4);
-        aGbc.gridy = 0;
-        aGbc.fill = GridBagConstraints.HORIZONTAL;
-        aGbc.weightx = 1.0;
-
-        aGbc.gridx = 0;
-        actionPanel.add(validateButton, aGbc);
-        aGbc.gridx = 1;
-        actionPanel.add(invalidateButton, aGbc);
-        aGbc.gridx = 2;
-        actionPanel.add(refreshButton, aGbc);
-        aGbc.gridx = 3;
-        actionPanel.add(forceSubmitButton, aGbc);
+    // Use a compact FlowLayout so buttons don't expand when the panel is narrowed
+    JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+    actionPanel.add(validateButton);
+    actionPanel.add(invalidateButton);
+    actionPanel.add(refreshButton);
+    actionPanel.add(forceSubmitButton);
 
         gbc.gridx = 0;
         gbc.gridy++;
@@ -252,12 +245,12 @@ public class ValidationToolPanel extends ToggleDialog {
                 updatePanelData();
             } catch (Exception ex) {
                 Logging.error(ex);
-                JOptionPane.showMessageDialog(this, "Error refreshing layer: " + ex.getMessage(), "Refresh Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(null, "Error refreshing layer: " + ex.getMessage(), "Refresh Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
         forceSubmitButton.addActionListener(e -> {
-            int ok = JOptionPane.showConfirmDialog(this, "Force submit will bypass the authorized mapper list. Continue?", "Confirm Force Submit", JOptionPane.YES_NO_OPTION);
+            int ok = JOptionPane.showConfirmDialog(null, "Force submit will bypass the authorized mapper list. Continue?", "Confirm Force Submit", JOptionPane.YES_NO_OPTION);
             if (ok == JOptionPane.YES_OPTION) {
                 allowForceSubmit = true;
                 forceSubmitButton.setEnabled(false);
@@ -286,7 +279,11 @@ public class ValidationToolPanel extends ToggleDialog {
         isFetchingMappers = fetching;
         SwingUtilities.invokeLater(() -> {
             refreshMapperListButton.setEnabled(!fetching);
-            if (fetching) refreshMapperListButton.setText("Refreshing..."); else refreshMapperListButton.setText("Refresh Mapper List");
+            if (fetching) {
+                refreshMapperListButton.setToolTipText("Refreshing authorized mapper list...");
+            } else {
+                refreshMapperListButton.setToolTipText("Refresh authorized mapper list");
+            }
         });
     }
 
@@ -299,13 +296,38 @@ public class ValidationToolPanel extends ToggleDialog {
             refreshMapperListButton.setEnabled(!sending && !isFetchingMappers);
             forceSubmitButton.setEnabled(!sending && !allowForceSubmit);
             if (sending) {
-                validateButton.setText("Sending...");
-                invalidateButton.setText("Sending...");
+                showSendingDialog();
             } else {
-                validateButton.setText("Validate (Accept)");
-                invalidateButton.setText("Invalidate (Reject)");
+                hideSendingDialog();
             }
         });
+    }
+
+    private void showSendingDialog() {
+        if (sendingDialog != null && sendingDialog.isShowing()) return;
+        Frame owner = MainApplication.getMainFrame();
+        sendingDialog = new JDialog(owner, "Submitting...", false);
+        JPanel p = new JPanel(new BorderLayout(8,8));
+        p.setBorder(BorderFactory.createEmptyBorder(8,8,8,8));
+        JLabel l = new JLabel("Submitting data — please wait...");
+        JProgressBar bar = new JProgressBar();
+        bar.setIndeterminate(true);
+        p.add(l, BorderLayout.NORTH);
+        p.add(bar, BorderLayout.CENTER);
+        sendingDialog.getContentPane().add(p);
+        sendingDialog.pack();
+        sendingDialog.setLocationRelativeTo(owner);
+        sendingDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        sendingDialog.setModal(false);
+        sendingDialog.setVisible(true);
+    }
+
+    private void hideSendingDialog() {
+        if (sendingDialog != null) {
+            sendingDialog.setVisible(false);
+            sendingDialog.dispose();
+            sendingDialog = null;
+        }
     }
 
     private void updateAuthStatus() {
@@ -491,6 +513,10 @@ public class ValidationToolPanel extends ToggleDialog {
 
 
     private void submitData(String validationStatus) {
+        if (submittedThisSession) {
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Data has already been submitted in this session.", "Already Submitted", JOptionPane.INFORMATION_MESSAGE));
+            return;
+        }
         String taskId = taskIdField.getText();
         String mapperUsername = (String) mapperUsernameComboBox.getSelectedItem();
         if (mapperUsername == null) {
@@ -498,12 +524,12 @@ public class ValidationToolPanel extends ToggleDialog {
         }
         // Client-side authorization check: ensure mapper is in authorized list
         synchronized (authorizedMappers) {
-            if (!authorizedMappers.isEmpty() && !authorizedMappers.contains(mapperUsername)) {
-                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this,
-                        "Error: The selected mapper is not a registered participant in this project. Please select a valid user or refresh the mapper list.",
-                        "Unauthorized Mapper", JOptionPane.ERROR_MESSAGE));
-                return;
-            }
+        if (!authorizedMappers.isEmpty() && !authorizedMappers.contains(mapperUsername)) {
+        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+            "Error: The selected mapper is not a registered participant in this project. Please select a valid user or refresh the mapper list.",
+            "Unauthorized Mapper", JOptionPane.ERROR_MESSAGE));
+        return;
+        }
         }
         String totalBuildings = totalBuildingsField.getText();
         String validatorComments = validatorCommentsArea.getText();
@@ -540,173 +566,182 @@ public class ValidationToolPanel extends ToggleDialog {
 
     private void sendPostRequest(String jsonData) {
         new Thread(() -> {
+            setSending(true);
             String baseUrl = "https://script.google.com/macros/s/AKfycbytfxwDkZG1qDpgXV4QcplBgq4u9PVSW7yQzfe47UG4dmM_nh5-D6mb7LZ4vxib9KQp/exec";
             Exception lastEx = null;
             int lastRc = -1;
             String lastResp = "";
             try {
                 // First attempt: POST JSON with proper headers
-                URL url = new URI(baseUrl).toURL();
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                conn.setRequestProperty("Accept", "application/json, text/plain, */*");
-                conn.setDoOutput(true);
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(15000);
+                try {
+                    URL url = new URI(baseUrl).toURL();
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                    conn.setRequestProperty("Accept", "application/json, text/plain, */*");
+                    conn.setDoOutput(true);
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(15000);
 
-                try (OutputStream os = conn.getOutputStream()) {
-                    byte[] input = jsonData.getBytes(StandardCharsets.UTF_8);
-                    os.write(input, 0, input.length);
-                }
-
-                lastRc = conn.getResponseCode();
-                StringBuilder response = new StringBuilder();
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                        lastRc >= 400 ? conn.getErrorStream() : conn.getInputStream(), StandardCharsets.UTF_8))) {
-                    String responseLine;
-                    while ((responseLine = br.readLine()) != null) {
-                        response.append(responseLine.trim());
+                    try (OutputStream os = conn.getOutputStream()) {
+                        byte[] input = jsonData.getBytes(StandardCharsets.UTF_8);
+                        os.write(input, 0, input.length);
                     }
-                }
-                lastResp = response.toString();
 
-                if (lastRc == HttpURLConnection.HTTP_OK) {
-                    final String resp = lastResp;
-                    // Interpret response: prefer JSON or explicit success markers
-                    String trimmed = resp == null ? "" : resp.trim();
-                    boolean looksLikeJson = trimmed.startsWith("{") || trimmed.startsWith("[");
-                    boolean containsOk = trimmed.toLowerCase().contains("ok") || trimmed.toLowerCase().contains("success");
-                    boolean containsError = trimmed.toLowerCase().contains("error") || trimmed.toLowerCase().contains("exception") || trimmed.toLowerCase().contains("stacktrace");
-                    boolean looksLikeHtml = trimmed.startsWith("<");
-                    if (looksLikeHtml || containsError) {
-                        // Treat as failure
-                        lastResp = resp;
-                        lastRc = HttpURLConnection.HTTP_INTERNAL_ERROR;
-                    } else if (looksLikeJson || containsOk) {
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
-                        return;
-                    } else {
-                        // Unknown plain-text response; show as success but warn
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Submission sent — server returned non-JSON response:\n" + resp, "Submitted (uncertain)", JOptionPane.WARNING_MESSAGE));
-                        return;
+                    lastRc = conn.getResponseCode();
+                    StringBuilder response = new StringBuilder();
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                            lastRc >= 400 ? conn.getErrorStream() : conn.getInputStream(), StandardCharsets.UTF_8))) {
+                        String responseLine;
+                        while ((responseLine = br.readLine()) != null) {
+                            response.append(responseLine.trim());
+                        }
                     }
-                }
-            } catch (Exception e) {
-                lastEx = e;
-            }
+                    lastResp = response.toString();
 
-            // Second attempt: Apps Script sometimes expects form-encoded 'payload' param
-            try {
-                String form = "payload=" + URLEncoder.encode(jsonData, StandardCharsets.UTF_8.name());
-                URL url2 = new URI(baseUrl).toURL();
-                HttpURLConnection conn2 = (HttpURLConnection) url2.openConnection();
-                conn2.setRequestMethod("POST");
-                conn2.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
-                conn2.setRequestProperty("Accept", "application/json, text/plain, */*");
-                conn2.setDoOutput(true);
-                conn2.setConnectTimeout(10000);
-                conn2.setReadTimeout(15000);
-
-                try (OutputStream os = conn2.getOutputStream()) {
-                    byte[] input = form.getBytes(StandardCharsets.UTF_8);
-                    os.write(input, 0, input.length);
-                }
-
-                lastRc = conn2.getResponseCode();
-                StringBuilder response2 = new StringBuilder();
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                        lastRc >= 400 ? conn2.getErrorStream() : conn2.getInputStream(), StandardCharsets.UTF_8))) {
-                    String responseLine;
-                    while ((responseLine = br.readLine()) != null) {
-                        response2.append(responseLine.trim());
-                    }
-                }
-                lastResp = response2.toString();
-                if (lastRc == HttpURLConnection.HTTP_OK) {
-                    final String resp = lastResp;
-                    String trimmed = resp == null ? "" : resp.trim();
-                    boolean looksLikeJson = trimmed.startsWith("{") || trimmed.startsWith("[");
-                    boolean containsOk = trimmed.toLowerCase().contains("ok") || trimmed.toLowerCase().contains("success");
-                    boolean containsError = trimmed.toLowerCase().contains("error") || trimmed.toLowerCase().contains("exception") || trimmed.toLowerCase().contains("stacktrace");
-                    boolean looksLikeHtml = trimmed.startsWith("<");
-                    if (looksLikeHtml || containsError) {
-                        lastResp = resp;
-                        lastRc = HttpURLConnection.HTTP_INTERNAL_ERROR;
-                    } else if (looksLikeJson || containsOk) {
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
-                        return;
-                    } else {
-                        // If the response is of the form payload=..., attempt to decode and inspect
-                        String lower = resp == null ? "" : resp;
-                        int idx = lower.indexOf("payload=");
-                        if (idx >= 0) {
-                            String suffix = resp.substring(idx + "payload=".length());
-                            try {
-                                String decoded = java.net.URLDecoder.decode(suffix, StandardCharsets.UTF_8.name());
-                                String dtrim = decoded.trim();
-                                if (dtrim.startsWith("{") || dtrim.startsWith("[") || dtrim.toLowerCase().contains("ok")) {
-                                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Data submitted successfully!\nResponse: " + decoded, "Success", JOptionPane.INFORMATION_MESSAGE));
-                                    return;
-                                } else {
-                                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Submission sent — server returned non-JSON payload:\n" + decoded, "Submitted (uncertain)", JOptionPane.WARNING_MESSAGE));
-                                    return;
-                                }
-                            } catch (Exception e) {
-                                // fall through to failure
-                                lastResp = resp;
-                                lastRc = HttpURLConnection.HTTP_INTERNAL_ERROR;
-                            }
+                    if (lastRc == HttpURLConnection.HTTP_OK) {
+                        final String resp = lastResp;
+                        // Interpret response: prefer JSON or explicit success markers
+                        String trimmed = resp == null ? "" : resp.trim();
+                        boolean looksLikeJson = trimmed.startsWith("{") || trimmed.startsWith("[");
+                        boolean containsOk = trimmed.toLowerCase().contains("ok") || trimmed.toLowerCase().contains("success");
+                        boolean containsError = trimmed.toLowerCase().contains("error") || trimmed.toLowerCase().contains("exception") || trimmed.toLowerCase().contains("stacktrace");
+                        boolean looksLikeHtml = trimmed.startsWith("<");
+                        if (looksLikeHtml || containsError) {
+                            // Treat as failure
+                            lastResp = resp;
+                            lastRc = HttpURLConnection.HTTP_INTERNAL_ERROR;
+                        } else if (looksLikeJson || containsOk) {
+                            submittedThisSession = true;
+                            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
+                            return;
                         } else {
-                            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Submission sent — server returned non-JSON response:\n" + resp, "Submitted (uncertain)", JOptionPane.WARNING_MESSAGE));
+                            // Unknown plain-text response; show as success but warn
+                            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Submission sent — server returned non-JSON response:\n" + resp, "Submitted (uncertain)", JOptionPane.WARNING_MESSAGE));
                             return;
                         }
                     }
+                } catch (Exception e) {
+                    lastEx = e;
                 }
-            } catch (Exception e) {
-                lastEx = e;
-            }
 
-            // Third attempt: GET fallback with payload param
-            try {
-                String qs = "?payload=" + URLEncoder.encode(jsonData, StandardCharsets.UTF_8.name());
-                URL url3 = new URI(baseUrl + qs).toURL();
-                HttpURLConnection conn3 = (HttpURLConnection) url3.openConnection();
-                conn3.setRequestMethod("GET");
-                conn3.setRequestProperty("Accept", "application/json, text/plain, */*");
-                conn3.setConnectTimeout(10000);
-                conn3.setReadTimeout(15000);
+                // Second attempt: Apps Script sometimes expects form-encoded 'payload' param
+                try {
+                    String form = "payload=" + URLEncoder.encode(jsonData, StandardCharsets.UTF_8.name());
+                    URL url2 = new URI(baseUrl).toURL();
+                    HttpURLConnection conn2 = (HttpURLConnection) url2.openConnection();
+                    conn2.setRequestMethod("POST");
+                    conn2.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+                    conn2.setRequestProperty("Accept", "application/json, text/plain, */*");
+                    conn2.setDoOutput(true);
+                    conn2.setConnectTimeout(10000);
+                    conn2.setReadTimeout(15000);
 
-                lastRc = conn3.getResponseCode();
-                StringBuilder response3 = new StringBuilder();
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                        lastRc >= 400 ? conn3.getErrorStream() : conn3.getInputStream(), StandardCharsets.UTF_8))) {
-                    String responseLine;
-                    while ((responseLine = br.readLine()) != null) {
-                        response3.append(responseLine.trim());
+                    try (OutputStream os = conn2.getOutputStream()) {
+                        byte[] input = form.getBytes(StandardCharsets.UTF_8);
+                        os.write(input, 0, input.length);
                     }
-                }
-                lastResp = response3.toString();
-                if (lastRc == HttpURLConnection.HTTP_OK) {
-                    final String resp = lastResp;
-                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
-                    return;
-                }
-            } catch (Exception e) {
-                lastEx = e;
-            }
 
-            final int rcFinal = lastRc;
-            final String respFinal = lastResp;
-            final Exception exFinal = lastEx;
-            SwingUtilities.invokeLater(() -> {
-                if (exFinal != null) {
-                    Logging.error(exFinal);
-                    JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "An error occurred during submission: " + exFinal.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                } else {
-                    JOptionPane.showMessageDialog(MainApplication.getMainFrame(), "Data submission failed. Code: " + rcFinal + "\nResponse: " + respFinal, "Error", JOptionPane.ERROR_MESSAGE);
+                    lastRc = conn2.getResponseCode();
+                    StringBuilder response2 = new StringBuilder();
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                            lastRc >= 400 ? conn2.getErrorStream() : conn2.getInputStream(), StandardCharsets.UTF_8))) {
+                        String responseLine;
+                        while ((responseLine = br.readLine()) != null) {
+                            response2.append(responseLine.trim());
+                        }
+                    }
+                    lastResp = response2.toString();
+                    if (lastRc == HttpURLConnection.HTTP_OK) {
+                        final String resp = lastResp;
+                        String trimmed = resp == null ? "" : resp.trim();
+                        boolean looksLikeJson = trimmed.startsWith("{") || trimmed.startsWith("[");
+                        boolean containsOk = trimmed.toLowerCase().contains("ok") || trimmed.toLowerCase().contains("success");
+                        boolean containsError = trimmed.toLowerCase().contains("error") || trimmed.toLowerCase().contains("exception") || trimmed.toLowerCase().contains("stacktrace");
+                        boolean looksLikeHtml = trimmed.startsWith("<");
+                        if (looksLikeHtml || containsError) {
+                            lastResp = resp;
+                            lastRc = HttpURLConnection.HTTP_INTERNAL_ERROR;
+                        } else if (looksLikeJson || containsOk) {
+                            submittedThisSession = true;
+                            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
+                            return;
+                        } else {
+                            // If the response is of the form payload=..., attempt to decode and inspect
+                            String lower = resp == null ? "" : resp;
+                            int idx = lower.indexOf("payload=");
+                            if (idx >= 0) {
+                                String suffix = resp.substring(idx + "payload=".length());
+                                try {
+                                    String decoded = java.net.URLDecoder.decode(suffix, StandardCharsets.UTF_8.name());
+                                    String dtrim = decoded.trim();
+                                    if (dtrim.startsWith("{") || dtrim.startsWith("[") || dtrim.toLowerCase().contains("ok")) {
+                                        submittedThisSession = true;
+                                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Data submitted successfully!\nResponse: " + decoded, "Success", JOptionPane.INFORMATION_MESSAGE));
+                                        return;
+                                    } else {
+                                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Submission sent — server returned non-JSON payload:\n" + decoded, "Submitted (uncertain)", JOptionPane.WARNING_MESSAGE));
+                                        return;
+                                    }
+                                } catch (Exception e) {
+                                    // fall through to failure
+                                    lastResp = resp;
+                                    lastRc = HttpURLConnection.HTTP_INTERNAL_ERROR;
+                                }
+                            } else {
+                                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Submission sent — server returned non-JSON response:\n" + resp, "Submitted (uncertain)", JOptionPane.WARNING_MESSAGE));
+                                return;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    lastEx = e;
                 }
-            });
+
+                // Third attempt: GET fallback with payload param
+                try {
+                    String qs = "?payload=" + URLEncoder.encode(jsonData, StandardCharsets.UTF_8.name());
+                    URL url3 = new URI(baseUrl + qs).toURL();
+                    HttpURLConnection conn3 = (HttpURLConnection) url3.openConnection();
+                    conn3.setRequestMethod("GET");
+                    conn3.setRequestProperty("Accept", "application/json, text/plain, */*");
+                    conn3.setConnectTimeout(10000);
+                    conn3.setReadTimeout(15000);
+
+                    lastRc = conn3.getResponseCode();
+                    StringBuilder response3 = new StringBuilder();
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                            lastRc >= 400 ? conn3.getErrorStream() : conn3.getInputStream(), StandardCharsets.UTF_8))) {
+                        String responseLine;
+                        while ((responseLine = br.readLine()) != null) {
+                            response3.append(responseLine.trim());
+                        }
+                    }
+                    lastResp = response3.toString();
+                    if (lastRc == HttpURLConnection.HTTP_OK) {
+                        final String resp = lastResp;
+                        submittedThisSession = true;
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
+                        return;
+                    }
+                } catch (Exception e) {
+                    lastEx = e;
+                }
+
+                final int rcFinal = lastRc;
+                final String respFinal = lastResp;
+                final Exception exFinal = lastEx;
+                SwingUtilities.invokeLater(() -> {
+                    if (exFinal != null) {
+                        Logging.error(exFinal);
+                        JOptionPane.showMessageDialog(null, "An error occurred during submission: " + exFinal.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(null, "Data submission failed. Code: " + rcFinal + "\nResponse: " + respFinal, "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                });
+            } finally {
+                setSending(false);
+            }
 
         }).start();
     }
