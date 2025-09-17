@@ -39,6 +39,7 @@ public class ValidationToolPanel extends ToggleDialog {
     private JTextArea validatorCommentsArea;
     private List<String> authorizedMappers = new ArrayList<>();
     private JLabel authStatusLabel;
+    private JLabel fetchStatusLabel;
     private JButton validateButton;
     private JButton invalidateButton;
     private JButton refreshButton;
@@ -73,6 +74,11 @@ public class ValidationToolPanel extends ToggleDialog {
                     SwingUtilities.invokeLater(() -> updateAuthStatus());
                 } catch (Exception e) {
                     Logging.info("DPWValidationTool: initial mapper fetch failed: " + e.getMessage());
+                    SwingUtilities.invokeLater(() -> {
+                        fetchStatusLabel.setText("Error: Failed to fetch mapper list - " + e.getMessage());
+                        fetchStatusLabel.setBackground(new Color(0xffcccc));
+                        updateSubmitButtonsEnabled();
+                    });
                 } finally {
                     setFetchingMappers(false);
                 }
@@ -141,11 +147,19 @@ public class ValidationToolPanel extends ToggleDialog {
                     fetchAuthorizedMappers();
                     SwingUtilities.invokeLater(() -> {
                         updateAuthStatus();
+                        fetchStatusLabel.setText("Success: User list updated. Ready for validation.");
+                        fetchStatusLabel.setBackground(new Color(0x88ff88));
+                        updateSubmitButtonsEnabled();
                         JOptionPane.showMessageDialog(null, "Authorized mapper list refreshed (" + authorizedMappers.size() + ")", "Mapper List", JOptionPane.INFORMATION_MESSAGE);
                     });
                 } catch (Exception ex) {
                     Logging.error(ex);
-                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Failed to fetch mapper list: " + ex.getMessage(), "Mapper List Error", JOptionPane.ERROR_MESSAGE));
+                    SwingUtilities.invokeLater(() -> {
+                        fetchStatusLabel.setText("Error: Failed to fetch mapper list - " + ex.getMessage());
+                        fetchStatusLabel.setBackground(new Color(0xffcccc));
+                        updateSubmitButtonsEnabled();
+                        JOptionPane.showMessageDialog(null, "Failed to fetch mapper list: " + ex.getMessage(), "Mapper List Error", JOptionPane.ERROR_MESSAGE);
+                    });
                 } finally {
                     setFetchingMappers(false);
                 }
@@ -202,11 +216,17 @@ public class ValidationToolPanel extends ToggleDialog {
         panel.add(new JScrollPane(validatorCommentsArea), gbc);
         gbc.weighty = 0; // Reset for subsequent components
 
-    // Authorization status label + Force Submit
+    // Fetch status label + Authorization status label + Force Submit
     gbc.gridx = 0;
     gbc.gridy++;
     gbc.gridwidth = 3;
     gbc.fill = GridBagConstraints.HORIZONTAL;
+    fetchStatusLabel = new JLabel("User list: unknown");
+    fetchStatusLabel.setOpaque(true);
+    fetchStatusLabel.setBackground(Color.YELLOW);
+    panel.add(fetchStatusLabel, gbc);
+
+    gbc.gridy++;
     authStatusLabel = new JLabel("Mapper authorization: unknown");
     authStatusLabel.setOpaque(true);
     authStatusLabel.setBackground(Color.LIGHT_GRAY);
@@ -263,9 +283,7 @@ public class ValidationToolPanel extends ToggleDialog {
         invalidateButton.setEnabled(false);
         taskIdField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             private void update() {
-                boolean enabled = !taskIdField.getText().trim().isEmpty();
-                validateButton.setEnabled(enabled);
-                invalidateButton.setEnabled(enabled);
+                updateSubmitButtonsEnabled();
             }
             public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
             public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
@@ -284,6 +302,7 @@ public class ValidationToolPanel extends ToggleDialog {
             } else {
                 refreshMapperListButton.setToolTipText("Refresh authorized mapper list");
             }
+            updateSubmitButtonsEnabled();
         });
     }
 
@@ -441,6 +460,13 @@ public class ValidationToolPanel extends ToggleDialog {
         if (urlStr == null || urlStr.trim().isEmpty()) {
             throw new IllegalStateException("Mapper list URL is not configured (dpw.mapper_list_url)");
         }
+        // indicate fetching to the user
+        SwingUtilities.invokeLater(() -> {
+            fetchStatusLabel.setText("Fetching authorized users...");
+            fetchStatusLabel.setBackground(Color.YELLOW);
+            updateSubmitButtonsEnabled();
+        });
+
         URL url = new URI(urlStr).toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
@@ -450,7 +476,12 @@ public class ValidationToolPanel extends ToggleDialog {
 
         int rc = conn.getResponseCode();
         if (rc < 200 || rc >= 300) {
-            throw new IllegalStateException("Mapper list endpoint returned HTTP " + rc);
+            StringBuilder err = new StringBuilder();
+            try (BufferedReader ebr = new BufferedReader(new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
+                String l;
+                while ((l = ebr.readLine()) != null) err.append(l);
+            } catch (Exception ignore) {}
+            throw new IllegalStateException("Mapper list endpoint returned HTTP " + rc + ": " + err.toString());
         }
 
         StringBuilder sb = new StringBuilder();
@@ -466,6 +497,8 @@ public class ValidationToolPanel extends ToggleDialog {
             String inner = body.substring(1, body.length() - 1).trim();
             if (!inner.isEmpty()) {
                 String[] parts = inner.split(",");
+
+        
                 for (String p : parts) {
                     String t = p.trim();
                     if (t.startsWith("\"") && t.endsWith("\"")) {
@@ -509,6 +542,14 @@ public class ValidationToolPanel extends ToggleDialog {
             authorizedMappers.clear();
             authorizedMappers.addAll(result);
         }
+
+        // Update UI to reflect success
+        SwingUtilities.invokeLater(() -> {
+            fetchStatusLabel.setText("Success: User list updated. Ready for validation.");
+            fetchStatusLabel.setBackground(new Color(0x88ff88));
+            updateAuthStatus();
+            updateSubmitButtonsEnabled();
+        });
     }
 
 
@@ -737,6 +778,18 @@ public class ValidationToolPanel extends ToggleDialog {
         }).start();
     }
 
+    private void updateSubmitButtonsEnabled() {
+        SwingUtilities.invokeLater(() -> {
+            boolean hasTaskId = taskIdField != null && !taskIdField.getText().trim().isEmpty();
+            boolean mapperListLoaded;
+            synchronized (authorizedMappers) {
+                mapperListLoaded = !authorizedMappers.isEmpty();
+            }
+            boolean enable = hasTaskId && mapperListLoaded && !isSending;
+            validateButton.setEnabled(enable);
+            invalidateButton.setEnabled(enable);
+        });
+    }
     private static String jsonEscape(String s) {
         if (s == null) return "";
         StringBuilder sb = new StringBuilder();
