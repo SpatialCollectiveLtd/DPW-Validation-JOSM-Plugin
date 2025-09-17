@@ -104,13 +104,7 @@ public class ValidationToolPanel extends ToggleDialog {
         taskIdField = new JTextField();
         panel.add(taskIdField, gbc);
 
-    // Refresh Mapper List button (authorized mappers)
-    gbc.gridx = 3;
-    gbc.gridwidth = 1;
-    gbc.fill = GridBagConstraints.NONE;
-    gbc.weightx = 0;
-    refreshMapperListButton = new JButton("Refresh Mapper List");
-    panel.add(refreshMapperListButton, gbc);
+    // NOTE: the mapper-list refresh button will be placed beside the mapper combo (small icon)
 
         // Mapper Username
         gbc.gridx = 0;
@@ -120,12 +114,22 @@ public class ValidationToolPanel extends ToggleDialog {
         gbc.weightx = 0;
         panel.add(new JLabel("Mapper Username:"), gbc);
 
-        gbc.gridx = 1;
-        gbc.gridwidth = 2;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1.0;
-        mapperUsernameComboBox = new JComboBox<>();
-        panel.add(mapperUsernameComboBox, gbc);
+    gbc.gridx = 1;
+    gbc.gridwidth = 2;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    gbc.weightx = 1.0;
+    mapperUsernameComboBox = new JComboBox<>();
+    panel.add(mapperUsernameComboBox, gbc);
+
+    // small refresh button next to the mapper combo to avoid widening the panel
+    gbc.gridx = 3;
+    gbc.gridwidth = 1;
+    gbc.fill = GridBagConstraints.NONE;
+    gbc.weightx = 0;
+    refreshMapperListButton = new JButton("\u21bb"); // unicode clockwise refresh
+    refreshMapperListButton.setPreferredSize(new Dimension(28, 22));
+    refreshMapperListButton.setToolTipText("Refresh authorized mapper list");
+    panel.add(refreshMapperListButton, gbc);
 
         // wire refresh mapper list button
         refreshMapperListButton.addActionListener(e -> {
@@ -207,10 +211,14 @@ public class ValidationToolPanel extends ToggleDialog {
     panel.add(authStatusLabel, gbc);
 
         // Action Buttons - place each button into the GridBag so they reflow with width
-    validateButton = new JButton("Validate (Accept)");
-    invalidateButton = new JButton("Invalidate (Reject)");
-    refreshButton = new JButton("Refresh");
-    forceSubmitButton = new JButton("Force Submit");
+    validateButton = new JButton("Accept");
+    validateButton.setToolTipText("Mark this task as validated (accept)");
+    invalidateButton = new JButton("Reject");
+    invalidateButton.setToolTipText("Mark this task as rejected (invalidate)");
+    refreshButton = new JButton("Scan");
+    refreshButton.setToolTipText("Rescan the active layer for buildings and mappers");
+    forceSubmitButton = new JButton("Force");
+    forceSubmitButton.setToolTipText("Force submit even if mapper not authorised (use with caution)");
 
         JPanel actionPanel = new JPanel(new GridBagLayout());
         GridBagConstraints aGbc = new GridBagConstraints();
