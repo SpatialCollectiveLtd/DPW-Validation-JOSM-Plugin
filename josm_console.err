@@ -4,7 +4,7 @@ Build-Date:2025-09-01 09:22:37
 
 Identification: JOSM/1.5 (19439 en) Windows 11 64-Bit
 OS Build number: Windows 10 Pro 24H2 (26100)
-Memory Usage: 400 MB / 6028 MB (108 MB allocated, but free)
+Memory Usage: 308 MB / 6028 MB (96 MB allocated, but free)
 Java version: 21.0.8+9-LTS, Azul Systems, Inc., OpenJDK 64-Bit Server VM
 Look and Feel: com.sun.java.swing.plaf.windows.WindowsLookAndFeel
 Screen: \Display0 1366x768x32bpp@60Hz (scaling 1.00×1.00)
@@ -21,25 +21,22 @@ Plugins:
 + DPWValidationTool (1.0.0)
 
 Last errors/warnings:
-- 00000.562 W: extended font config - overriding 'filename.Malgun_Gothic=malgun.ttf' with 'MALGUN.TTF'
-- 00000.566 W: extended font config - overriding 'filename.Myanmar_Text=mmrtext.ttf' with 'MMRTEXT.TTF'
-- 00000.567 W: extended font config - overriding 'filename.Mongolian_Baiti=monbaiti.ttf' with 'MONBAITI.TTF'
-- 00001.034 E: java.security.KeyStoreException: Windows-ROOT not found. Cause: java.security.NoSuchAlgorithmException: Windows-ROOT KeyStore not available
-- 00001.303 W: Missing plugin main version in plugin DPWValidationTool
-- 00002.038 W: Missing plugin main version in plugin DPWValidationTool
-- 00115.743 E: DPWValidationTool: mapFrameInitialized failed: java.lang.NullPointerException: Cannot invoke "org.openstreetmap.josm.gui.dialogs.ToggleDialog$TitleBar.setVisible(boolean)" because "this.titleBar" is null
-- 00153.557 E: Handled by bug report queue: java.lang.NullPointerException: Cannot invoke "org.openstreetmap.josm.gui.dialogs.ToggleDialog$TitleBar.setVisible(boolean)" because "this.titleBar" is null
+- 00000.592 W: extended font config - overriding 'filename.Malgun_Gothic=malgun.ttf' with 'MALGUN.TTF'
+- 00000.596 W: extended font config - overriding 'filename.Myanmar_Text=mmrtext.ttf' with 'MMRTEXT.TTF'
+- 00000.597 W: extended font config - overriding 'filename.Mongolian_Baiti=monbaiti.ttf' with 'MONBAITI.TTF'
+- 00001.243 E: java.security.KeyStoreException: Windows-ROOT not found. Cause: java.security.NoSuchAlgorithmException: Windows-ROOT KeyStore not available
+- 00001.588 W: Missing plugin main version in plugin DPWValidationTool
+- 00002.623 W: Missing plugin main version in plugin DPWValidationTool
 
 
 cache.capabilities1637351842=1758015156
-cache.motd.html=1758015159
+cache.motd.html=1758102031
 cache.motd.html.java=21.0.8
 cache.motd.html.lang=En:
 cache.motd.html.version=19439
 changesetdialog.lastHeight=0
 commandstack.lastHeight=0
 conflict.lastHeight=0
-draw.rawgps.lines=-1
 expert=true
 filter.lastHeight=0
 gui.geometry=x=-8,y=-8,width=1000,height=740
@@ -52,12 +49,13 @@ imagery.entries=[{max-zoom=22, min-zoom=1, noTileHeaders={"X-VE-Tile-Info":["no-
 ]
 imagery.layers.default=[Bing, EsriWorldImagery, EsriWorldImageryClarity, Mapbox, standard]
 josm.version=19439
-layerlist.lastHeight=180
+layerlist.lastHeight=20
+layerlist.minimized=true
 mappaint.renderer-class-name=org.openstreetmap.josm.data.osm.visitor.paint.StyledMapRenderer
 mappaint.style.known-defaults=[resource://styles/standard/elemstyles.mapcss]
 mapstyle.lastHeight=0
 minimap.lastHeight=0
-mirror.https://josm.openstreetmap.de/maps=[1758015161688, <josm.cache>\mirror_https___josm.openstreetmap.de_maps]
+mirror.https://josm.openstreetmap.de/maps=[1758102018499, <josm.cache>\mirror_https___josm.openstreetmap.de_maps]
 mirror.https://josm.openstreetmap.de/remote/geofabrik-index-v1-nogeom.json=[1758015154849, <josm.cache>\mirror_https___josm.openstreetmap.de_remote_geofabrik-index-v1-nogeom.json]
 mirror.https://josm.openstreetmap.de/tested=[1758093313177, <josm.cache>\mirror_https___josm.openstreetmap.de_tested]
 notes/note_open.lastHeight=0
@@ -88,12 +86,12 @@ remotecontrol.permission.open-remote-files=true
 selectionlist.lastHeight=0
 selectionlist.visible=false
 sensitive.keys=[oauth.access-token.key, oauth.access-token.object.OAuth20.api.openstreetmap.org, oauth.access-token.parameters.OAuth20.api.openstreetmap.org, oauth.access-token.secret, osm-server.password, osm-server.username, proxy.pass, proxy.user, sensitive.keys]
-toggleDialogs.width=358
+toggleDialogs.width=629
 upload.comment.history=[#hotosm-project-20235]
 upload.comment.last-used=1758026236
 upload.source.history=[Maxar-Standard, knowledge, survey, Bing]
 userlist.lastHeight=0
-validator.lastHeight=479
+validator.lastHeight=609
 validator.minimized=true
 validator.visible=true
 }}}
