@@ -31,3 +31,7 @@ Development
 License
 
 (Place license information here.)
+---
+**Ownership**
+
+This plugin is maintained and owned by Spatial Collective Ltd. For more information, visit [spatialcollective.com](https://spatialcollective.com).
