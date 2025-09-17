@@ -513,8 +513,8 @@ public class ValidationToolPanel extends ToggleDialog {
 
 
     private void submitData(String validationStatus) {
-        // Validator pre-flight checks
-        String validatorUsername = User.getName();
+    // Validator pre-flight checks - get current OSM username from JOSM preferences
+    String validatorUsername = Preferences.main().get("osm-server.username", "").trim();
         if (validatorUsername == null || validatorUsername.trim().isEmpty()) {
             SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
                     "Submission Failed: Cannot identify the current user. Please set your OSM username in JOSM's Connection Settings (Preferences > Connection Settings).",
