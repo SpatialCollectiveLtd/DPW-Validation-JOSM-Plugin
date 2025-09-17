@@ -634,7 +634,9 @@ public class ValidationToolPanel extends ToggleDialog {
                     } else {
                         // Non-200 response: show server error body if any
                         final String resp = lastResp == null ? "" : lastResp;
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Submission failed. Server returned HTTP " + lastRc + "\nResponse: " + resp, "Submission Failed", JOptionPane.ERROR_MESSAGE));
+                        final int rcSnapshot = lastRc;
+                        final String respSnapshot = lastResp == null ? "" : lastResp;
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Submission failed. Server returned HTTP " + rcSnapshot + "\nResponse: " + respSnapshot, "Submission Failed", JOptionPane.ERROR_MESSAGE));
                         return;
                     }
                 } catch (Exception e) {
@@ -678,7 +680,9 @@ public class ValidationToolPanel extends ToggleDialog {
                         return;
                     } else {
                         final String resp = lastResp == null ? "" : lastResp;
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Submission failed. Server returned HTTP " + lastRc + "\nResponse: " + resp, "Submission Failed", JOptionPane.ERROR_MESSAGE));
+                        final int rcSnapshot2 = lastRc;
+                        final String respSnapshot2 = lastResp == null ? "" : lastResp;
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Submission failed. Server returned HTTP " + rcSnapshot2 + "\nResponse: " + respSnapshot2, "Submission Failed", JOptionPane.ERROR_MESSAGE));
                         return;
                     }
                 } catch (Exception e) {
