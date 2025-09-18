@@ -1,5 +1,5 @@
 ![Build](https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/actions/workflows/ci.yml/badge.svg)
-![License](https://img.shields.io/badge/license-Proprietary-lightgrey.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Release](https://img.shields.io/github/v/release/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin)
 
 # DPW Validation Tool for JOSM
