@@ -4,9 +4,12 @@ import org.openstreetmap.josm.data.Preferences;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.User;
-import org.openstreetmap.josm.data.osm.filter.Filter;
+import org.openstreetmap.josm.data.osm.search.SearchCompiler;
+import org.openstreetmap.josm.data.osm.search.SearchParseError;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.actions.SaveAction;
+import org.openstreetmap.josm.io.OsmWriterFactory;
+import org.openstreetmap.josm.io.OsmWriter;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.dialogs.ToggleDialog;
 import org.openstreetmap.josm.tools.I18n;
@@ -327,28 +330,33 @@ public class ValidationToolPanel extends ToggleDialog {
                         return;
                     }
                     String search = "user:'" + mapper + "' timestamp:" + dateString;
-                    // create and apply filter to current active layer
+                    // create and apply search to current active layer
                     DataSet editDataSet = MainApplication.getLayerManager().getEditDataSet();
                     if (editDataSet == null) {
                         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "No active editing layer found.", "No Layer", JOptionPane.ERROR_MESSAGE));
                         return;
                     }
-                    Filter f = new Filter(search);
-                    f.filter(editDataSet);
-                    // collect selected primitives
+                    SearchCompiler.Match match;
+                    try {
+                        match = SearchCompiler.compile(search);
+                    } catch (SearchParseError spe) {
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Invalid search expression: " + spe.getMessage(), "Search Error", JOptionPane.ERROR_MESSAGE));
+                        return;
+                    }
+                    // collect matching primitives
                     Set<OsmPrimitive> selected = new HashSet<>();
-                    for (OsmPrimitive p : editDataSet.getPrimitives(p2 -> p2.isSelected())) {
-                        selected.add(p);
+                    for (OsmPrimitive p : editDataSet.getPrimitives(pr -> true)) {
+                        try {
+                            if (p.evaluateCondition(match)) selected.add(p);
+                        } catch (Exception ignore) {
+                        }
                     }
                     if (selected.isEmpty()) {
                         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "No objects matched the filter.", "No Matches", JOptionPane.INFORMATION_MESSAGE));
                         return;
                     }
-                    // create new dataset and copy primitives
-                    DataSet newDs = new DataSet();
-                    for (OsmPrimitive p : selected) {
-                        newDs.addPrimitive(p.clone());
-                    }
+                    // create new dataset and copy primitives (DataSet has a varargs constructor)
+                    DataSet newDs = new DataSet(selected.toArray(new OsmPrimitive[0]));
                     String layerName = "[Validation] " + mapper + " - " + dateString;
                     OsmDataLayer newLayer = new OsmDataLayer(newDs, layerName, null);
                     MainApplication.getLayerManager().addLayer(newLayer);
@@ -390,27 +398,12 @@ public class ValidationToolPanel extends ToggleDialog {
                         if (res != JFileChooser.APPROVE_OPTION) return;
                         java.io.File file = chooser.getSelectedFile();
                         try {
-                            // Try to use existing JOSM save utilities via reflection or SaveAction
-                            try {
-                                // Attempt to write programmatically if OsmIoWriter class is available
-                                Class<?> osmIoClass = Class.forName("org.openstreetmap.josm.io.OsmWriter");
-                                // Not all JOSM builds expose a simple static writer; fallback to SaveAction
-                                throw new ClassNotFoundException();
-                            } catch (Exception writeEx) {
-                                // Fallback: use SaveAction to let JOSM handle saving (this opens its save dialog)
-                                // If SaveAction doesn't accept a target file, save via DataSet -> file using a basic writer
-                                try {
-                                    // try SaveAction first
-                                    SaveAction.saveLayer(odl, MainApplication.getMainFrame());
-                                    exportLayerButton.setEnabled(false);
-                                } catch (Exception ex) {
-                                    // last fallback: write a minimal OSM XML via DataSet primitives (best-effort)
-                                    try (java.io.FileWriter fw = new java.io.FileWriter(file)) {
-                                        fw.write("<!-- Exported OSM data - minimal export. Use JOSM Save for full fidelity. -->\n");
-                                        fw.flush();
-                                        exportLayerButton.setEnabled(false);
-                                    }
-                                }
+                            // Write DataSet to file using JOSM OsmWriter
+                            try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), java.nio.charset.StandardCharsets.UTF_8))) {
+                                OsmWriter w = OsmWriterFactory.createOsmWriter(pw, true, org.openstreetmap.josm.io.OsmWriter.DEFAULT_API_VERSION);
+                                w.write(odl.getDataSet());
+                                pw.flush();
+                                exportLayerButton.setEnabled(false);
                             }
                         } catch (Exception ex) {
                             Logging.error(ex);
