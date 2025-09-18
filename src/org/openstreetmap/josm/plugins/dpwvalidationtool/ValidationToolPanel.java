@@ -305,8 +305,14 @@ public class ValidationToolPanel extends ToggleDialog {
         exportLayerButton.setEnabled(false);
         exportLayerButton.setToolTipText("Export the isolated validated layer to an .osm file");
 
-        // Add export button to action panel at the bottom
-        actionPanel.add(exportLayerButton);
+    // Place export button on its own row below the other action buttons for clarity
+    gbc.gridx = 0;
+    gbc.gridy++;
+    gbc.gridwidth = 3;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    JPanel exportPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+    exportPanel.add(exportLayerButton);
+    panel.add(exportPanel, gbc);
 
         // Isolate action listener
         isolateButton.addActionListener(e -> {
