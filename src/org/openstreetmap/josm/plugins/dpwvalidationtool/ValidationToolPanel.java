@@ -4,6 +4,9 @@ import org.openstreetmap.josm.data.Preferences;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.User;
+import org.openstreetmap.josm.data.osm.filter.Filter;
+import org.openstreetmap.josm.gui.layer.OsmDataLayer;
+import org.openstreetmap.josm.actions.SaveAction;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.dialogs.ToggleDialog;
 import org.openstreetmap.josm.tools.I18n;
@@ -45,6 +48,9 @@ public class ValidationToolPanel extends ToggleDialog {
     private JButton refreshButton;
     private JButton refreshMapperListButton;
     private JButton forceSubmitButton;
+    private javax.swing.JComponent datePickerComponent;
+    private JButton isolateButton;
+    private final JButton exportLayerButton = new JButton("Export Validated Layer");
     private volatile boolean allowForceSubmit = false;
     private volatile boolean isSending = false;
     private volatile boolean isFetchingMappers = false;
@@ -137,6 +143,25 @@ public class ValidationToolPanel extends ToggleDialog {
     refreshMapperListButton.setPreferredSize(new Dimension(26, 22));
     refreshMapperListButton.setToolTipText("Refresh authorized mapper list");
     mapperPanel.add(refreshMapperListButton);
+    // date picker placeholder (will try to use JDatePicker if available)
+    try {
+        // try to instantiate JDatePicker from org.jdatepicker if present
+        Class<?> pickerClass = Class.forName("org.jdatepicker.impl.JDatePickerImpl");
+        // create a minimal model and component via reflection to avoid compile dependency if library absent
+        Class<?> modelClass = Class.forName("org.jdatepicker.impl.SqlDateModel");
+        Object model = modelClass.getDeclaredConstructor().newInstance();
+        Class<?> propsClass = Class.forName("org.jdatepicker.util.PropertiesComponent");
+        // fallback — we will try a simple text field if reflection fails
+    } catch (Exception ignore) {
+        // ignore — create a simple JTextField as fallback UI
+    }
+    datePickerComponent = new JTextField(10);
+    ((JComponent)datePickerComponent).setPreferredSize(new Dimension(120, 24));
+    mapperPanel.add(new JLabel(" Date:"));
+    mapperPanel.add(datePickerComponent);
+    // isolate button
+    isolateButton = new JButton("Isolate Work for Date");
+    mapperPanel.add(isolateButton);
     panel.add(mapperPanel, gbc);
 
         // wire refresh mapper list button
@@ -276,6 +301,99 @@ public class ValidationToolPanel extends ToggleDialog {
                 forceSubmitButton.setEnabled(false);
                 forceSubmitButton.setText("Force Submit (ON)");
             }
+        });
+
+        // Export button default disabled
+        exportLayerButton.setEnabled(false);
+        exportLayerButton.setToolTipText("Export the isolated validated layer to an .osm file");
+
+        // Add export button to action panel at the bottom
+        actionPanel.add(exportLayerButton);
+
+        // Isolate action listener
+        isolateButton.addActionListener(e -> {
+            isolateButton.setEnabled(false);
+            new Thread(() -> {
+                try {
+                    String mapper = (String) mapperUsernameComboBox.getSelectedItem();
+                    if (mapper == null) mapper = "";
+                    String dateString = getDateStringFromPicker();
+                    if (dateString == null || dateString.isEmpty()) {
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Please select a date.", "No Date", JOptionPane.WARNING_MESSAGE));
+                        return;
+                    }
+                    String search = "user:'" + mapper + "' timestamp:" + dateString;
+                    // create and apply filter to current active layer
+                    DataSet editDataSet = MainApplication.getLayerManager().getEditDataSet();
+                    if (editDataSet == null) {
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "No active editing layer found.", "No Layer", JOptionPane.ERROR_MESSAGE));
+                        return;
+                    }
+                    Filter f = new Filter(search);
+                    f.filter(editDataSet);
+                    // collect selected primitives
+                    Set<OsmPrimitive> selected = new HashSet<>();
+                    for (OsmPrimitive p : editDataSet.getPrimitives(p2 -> p2.isSelected())) {
+                        selected.add(p);
+                    }
+                    if (selected.isEmpty()) {
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "No objects matched the filter.", "No Matches", JOptionPane.INFORMATION_MESSAGE));
+                        return;
+                    }
+                    // create new dataset and copy primitives
+                    DataSet newDs = new DataSet();
+                    for (OsmPrimitive p : selected) {
+                        newDs.addPrimitive(p.clone());
+                    }
+                    String layerName = "[Validation] " + mapper + " - " + dateString;
+                    OsmDataLayer newLayer = new OsmDataLayer(newDs, layerName, null);
+                    MainApplication.getLayerManager().addLayer(newLayer);
+                    MainApplication.getLayerManager().setActiveLayer(newLayer);
+                    SwingUtilities.invokeLater(() -> {
+                        exportLayerButton.setEnabled(true);
+                        JOptionPane.showMessageDialog(null, "Isolated layer created: " + layerName, "Isolated", JOptionPane.INFORMATION_MESSAGE);
+                    });
+                } catch (Exception ex) {
+                    Logging.error(ex);
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Failed to isolate work: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE));
+                } finally {
+                    SwingUtilities.invokeLater(() -> isolateButton.setEnabled(true));
+                }
+            }).start();
+        });
+
+        // Export action listener
+        exportLayerButton.addActionListener(e -> {
+            new Thread(() -> {
+                try {
+                    org.openstreetmap.josm.gui.layer.Layer active = MainApplication.getLayerManager().getActiveLayer();
+                    if (!(active instanceof OsmDataLayer)) {
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Active layer is not an OSM data layer.", "Cannot Export", JOptionPane.ERROR_MESSAGE));
+                        return;
+                    }
+                    String taskId = taskIdField.getText().trim();
+                    String mapper = (String) mapperUsernameComboBox.getSelectedItem();
+                    if (mapper == null) mapper = "";
+                    String dateString = getDateStringFromPicker();
+                    String filename = String.format("Task_%s_%s_%s.osm", taskId.isEmpty() ? "unknown" : taskId, mapper, dateString == null ? "unknown" : dateString);
+                    // Use SaveAction to prompt save dialog
+                    OsmDataLayer odl = (OsmDataLayer) active;
+                    // SaveAction can be invoked with SaveAction.saveLayer(layer, frame) — use MainApplication.getMainFrame()
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            SaveAction.saveLayer(odl, MainApplication.getMainFrame());
+                            // Note: setting default filename in Save dialog may not be supported; user will choose
+                            exportLayerButton.setEnabled(false);
+                        } catch (Exception ex) {
+                            Logging.error(ex);
+                            JOptionPane.showMessageDialog(null, "Failed to export layer: " + ex.getMessage(), "Export Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    });
+                } catch (Exception ex) {
+                    Logging.error(ex);
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Failed to export layer: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE));
+                }
+            }).start();
         });
 
         // Disable submit buttons until Task ID is provided
