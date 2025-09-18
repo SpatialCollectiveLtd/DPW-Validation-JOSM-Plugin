@@ -1,11 +1,7 @@
-Manifest-Version: 1.0
-Plugin-Class: org.openstreetmap.josm.plugins.dpwvalidationtool.DPWValida
- tionToolPlugin
+Plugin-Class: org.openstreetmap.josm.plugins.dpwvalidationtool.DPWValidationToolPlugin
 Plugin-Version: 1.0.0
 Plugin-Name: DPW Validation Tool
 Plugin-Main-Version: 1.0.0
 Plugin-Description: A plugin for quality assurance and data submission.
 Plugin-Author: Gemini
 Plugin-Link: https://github.com/your-repo-here
-Created-By: 21.0.8 (Eclipse Adoptium)
-

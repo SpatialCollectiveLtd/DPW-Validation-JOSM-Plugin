@@ -18,6 +18,8 @@ import org.openstreetmap.josm.tools.Logging;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -131,24 +133,41 @@ public class ValidationToolPanel extends ToggleDialog {
         gbc.weightx = 0;
         panel.add(new JLabel("Mapper Username:"), gbc);
 
-    // place combo and a small refresh button together in a panel so they don't stretch independently
+    // place combo and a small refresh button together but keep date/isolate compact on the right
     gbc.gridx = 1;
     gbc.gridwidth = 3;
     gbc.fill = GridBagConstraints.HORIZONTAL;
     gbc.weightx = 1.0;
-    JPanel mapperPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+    JPanel mapperPanel = new JPanel(new GridBagLayout());
+    GridBagConstraints mpGbc = new GridBagConstraints();
+    mpGbc.insets = new Insets(0, 0, 0, 4);
+    mpGbc.gridy = 0;
+
+    // Combo expands
+    mpGbc.gridx = 0;
+    mpGbc.weightx = 1.0;
+    mpGbc.fill = GridBagConstraints.HORIZONTAL;
     mapperUsernameComboBox = new JComboBox<>();
     mapperUsernameComboBox.setPreferredSize(new Dimension(220, 24));
-    mapperPanel.add(mapperUsernameComboBox);
-    // small icon-only refresh button
+    mapperPanel.add(mapperUsernameComboBox, mpGbc);
+
+    // small refresh button stays compact
+    mpGbc.gridx = 1;
+    mpGbc.weightx = 0;
+    mpGbc.fill = GridBagConstraints.NONE;
     refreshMapperListButton = new JButton("\u21bb");
     refreshMapperListButton.setMargin(new Insets(2,2,2,2));
     refreshMapperListButton.setPreferredSize(new Dimension(26, 22));
     refreshMapperListButton.setToolTipText("Refresh authorized mapper list");
-    mapperPanel.add(refreshMapperListButton);
+    mapperPanel.add(refreshMapperListButton, mpGbc);
+
+    // Right-side compact controls: date and isolate button
+    mpGbc.gridx = 2;
+    mpGbc.weightx = 0;
+    mpGbc.fill = GridBagConstraints.NONE;
+    JPanel rightControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
     // instantiate a JDatePicker if the library is available in lib/, otherwise fall back to JTextField
     try {
-        // Use direct types — ensure you place the JDatePicker jar in lib/ before building
         org.jdatepicker.impl.SqlDateModel model = new org.jdatepicker.impl.SqlDateModel();
         java.util.Properties p = new java.util.Properties();
         org.jdatepicker.impl.JDatePanelImpl datePanel = new org.jdatepicker.impl.JDatePanelImpl(model, p);
@@ -156,13 +175,20 @@ public class ValidationToolPanel extends ToggleDialog {
         datePickerComponent = picker;
     } catch (Throwable t) {
         datePickerComponent = new JTextField(10);
-        ((JComponent)datePickerComponent).setPreferredSize(new Dimension(120, 24));
     }
-    mapperPanel.add(new JLabel(" Date:"));
-    mapperPanel.add(datePickerComponent);
-    // isolate button
-    isolateButton = new JButton("Isolate Work for Date");
-    mapperPanel.add(isolateButton);
+    // keep date picker compact
+    if (datePickerComponent instanceof JComponent) {
+        ((JComponent) datePickerComponent).setPreferredSize(new Dimension(110, 24));
+    }
+    rightControls.add(new JLabel("Date:"));
+    rightControls.add(datePickerComponent);
+    // isolate button compact
+    isolateButton = new JButton("Isolate");
+    isolateButton.setToolTipText("Isolate work for selected mapper and date");
+    isolateButton.setPreferredSize(new Dimension(120, 24));
+    rightControls.add(isolateButton);
+    mapperPanel.add(rightControls, mpGbc);
+
     panel.add(mapperPanel, gbc);
 
         // wire refresh mapper list button
@@ -343,28 +369,99 @@ public class ValidationToolPanel extends ToggleDialog {
                         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Invalid search expression: " + spe.getMessage(), "Search Error", JOptionPane.ERROR_MESSAGE));
                         return;
                     }
-                    // collect matching primitives
+                    // collect building primitives authored by the selected mapper (and matching date where possible)
                     Set<OsmPrimitive> selected = new HashSet<>();
-                    for (OsmPrimitive p : editDataSet.getPrimitives(pr -> true)) {
+                    for (OsmPrimitive p : editDataSet.getPrimitives(pr -> pr.hasKey("building"))) {
                         try {
-                            if (p.evaluateCondition(match)) selected.add(p);
+                            User u = p.getUser();
+                            if (u == null) continue;
+                            if (!u.getName().equals(mapper)) continue;
+                            // if search compiled correctly we can try evaluating timestamp too; otherwise accept by user
+                            try {
+                                if (p.evaluateCondition(match)) {
+                                    selected.add(p);
+                                } else {
+                                    // p didn't match the full search (maybe timestamp syntax differs) - still accept by user
+                                    selected.add(p);
+                                }
+                            } catch (Exception ex) {
+                                // evaluation failed for timestamp; accept by user only
+                                selected.add(p);
+                            }
                         } catch (Exception ignore) {
                         }
                     }
                     if (selected.isEmpty()) {
-                        // fallback: if the user/date search matched nothing, select all primitives
-                        // This ensures the user always gets a layer to work with; they can then refine
-                        // by tags if needed. The previous behavior limited fallback to buildings only.
-                        for (OsmPrimitive p : editDataSet.getPrimitives(pr -> true)) {
-                            selected.add(p);
-                        }
-                        if (selected.isEmpty()) {
-                            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "No objects found in the active dataset.", "No Matches", JOptionPane.INFORMATION_MESSAGE));
-                            return;
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "No building objects found for selected mapper.", "No Matches", JOptionPane.INFORMATION_MESSAGE));
+                        return;
+                    }
+                    // create new dataset and clone primitives into it to avoid sharing primitives
+                    Logging.info("DPWValidationTool: preparing to create isolated layer for mapper='" + mapper + "', date='" + dateString + "', selectedCount=" + selected.size());
+                    DataSet newDs = new DataSet();
+                    // split selected primitives into nodes/ways/relations for clonePrimitives
+                    java.util.List<org.openstreetmap.josm.data.osm.Node> nodes = new java.util.ArrayList<>();
+                    java.util.List<org.openstreetmap.josm.data.osm.Way> ways = new java.util.ArrayList<>();
+                    java.util.List<org.openstreetmap.josm.data.osm.Relation> relations = new java.util.ArrayList<>();
+                    for (OsmPrimitive p : selected) {
+                        if (p instanceof org.openstreetmap.josm.data.osm.Node) nodes.add((org.openstreetmap.josm.data.osm.Node) p);
+                        else if (p instanceof org.openstreetmap.josm.data.osm.Way) ways.add((org.openstreetmap.josm.data.osm.Way) p);
+                        else if (p instanceof org.openstreetmap.josm.data.osm.Relation) relations.add((org.openstreetmap.josm.data.osm.Relation) p);
+                    }
+                    // Ensure we include all nodes referenced by selected ways (they might not be in selected set)
+                    java.util.Set<Long> existingNodeIds = new java.util.HashSet<>();
+                    for (org.openstreetmap.josm.data.osm.Node n : nodes) {
+                        existingNodeIds.add(n.getUniqueId());
+                    }
+                    for (org.openstreetmap.josm.data.osm.Way w : ways) {
+                        try {
+                            for (org.openstreetmap.josm.data.osm.Node n : w.getNodes()) {
+                                if (n == null) continue;
+                                long uid = n.getUniqueId();
+                                if (!existingNodeIds.contains(uid)) {
+                                    nodes.add(n);
+                                    existingNodeIds.add(uid);
+                                }
+                            }
+                        } catch (Exception ignore) {
                         }
                     }
-                    // create new dataset and copy primitives (DataSet has a varargs constructor)
-                    DataSet newDs = new DataSet(selected.toArray(new OsmPrimitive[0]));
+                    // Log IDs and dataset presence for diagnostics before cloning
+                    StringBuilder ids = new StringBuilder();
+                    for (OsmPrimitive p : selected) {
+                        try {
+                            long id = p.getId();
+                            boolean hasDs = p.getDataSet() != null;
+                            ids.append(String.format("[type=%s id=%d dataset=%s] ", p.getClass().getSimpleName(), id, hasDs ? "yes" : "no"));
+                        } catch (Exception ignore) {
+                        }
+                    }
+                    Logging.info("DPWValidationTool: primitives before clone: " + ids.toString());
+                    try {
+                        java.util.Map<org.openstreetmap.josm.data.osm.OsmPrimitive, org.openstreetmap.josm.data.osm.OsmPrimitive> mapping = newDs.clonePrimitives(nodes, ways, relations);
+                        Logging.info("DPWValidationTool: clonePrimitives mapping size=" + (mapping == null ? 0 : mapping.size()) + ", newDs size=" + newDs.getPrimitives(pr -> true).size());
+                    } catch (org.openstreetmap.josm.data.osm.DataIntegrityProblemException dip) {
+                        // Specific dataset integrity problem: log and show detailed message to help diagnosis
+                        Logging.error("DPWValidationTool: DataIntegrityProblemException while cloning primitives: " + dip.getMessage());
+                        Logging.error(dip);
+                        SwingUtilities.invokeLater(() -> {
+                            JTextArea ta = new JTextArea();
+                            ta.setEditable(false);
+                            StringWriter sw = new StringWriter();
+                            PrintWriter pw = new PrintWriter(sw);
+                            dip.printStackTrace(pw);
+                            ta.setText("Failed to clone primitives into new dataset: " + dip.getMessage() + "\n\nStacktrace:\n" + sw.toString());
+                            ta.setRows(20);
+                            ta.setColumns(80);
+                            JOptionPane.showMessageDialog(null, new JScrollPane(ta), "Data Integrity Error", JOptionPane.ERROR_MESSAGE);
+                        });
+                        return;
+                    } catch (Exception ex) {
+                        // Log and abort - do not add original primitives to new dataset (this causes duplication errors)
+                        Logging.error("DPWValidationTool: Exception while cloning primitives: " + ex.getMessage());
+                        Logging.error(ex);
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Failed to clone primitives into new dataset: " + ex.getMessage(), "Clone Error", JOptionPane.ERROR_MESSAGE));
+                        return;
+                    }
                     String layerName = "[Validation] " + mapper + " - " + dateString;
                     OsmDataLayer newLayer = new OsmDataLayer(newDs, layerName, null);
                     MainApplication.getLayerManager().addLayer(newLayer);
@@ -438,6 +535,8 @@ public class ValidationToolPanel extends ToggleDialog {
         });
 
         mapperUsernameComboBox.addItemListener(e -> updateAuthStatus());
+    // when mapper selection changes, update the building count shown (mapper-specific)
+    mapperUsernameComboBox.addItemListener(e -> updateMapperBuildingCount());
     }
 
     private void setFetchingMappers(boolean fetching) {
@@ -574,7 +673,6 @@ public class ValidationToolPanel extends ToggleDialog {
             mapperUsernameComboBox.removeAllItems();
             return;
         }
-
         int buildingCount = 0;
         Set<String> userNames = new HashSet<>();
         for (OsmPrimitive primitive : dataSet.getPrimitives(p -> true)) {
@@ -586,7 +684,14 @@ public class ValidationToolPanel extends ToggleDialog {
                 userNames.add(user.getName());
             }
         }
-        totalBuildingsField.setText(String.valueOf(buildingCount));
+        // Show overall building count by default, but if a mapper is selected, show mapper-specific buildings
+        String selectedMapper = (String) mapperUsernameComboBox.getSelectedItem();
+        if (selectedMapper != null && !selectedMapper.isEmpty()) {
+            int mapperBuildings = countBuildingsForMapper(selectedMapper, dataSet);
+            totalBuildingsField.setText(String.valueOf(mapperBuildings));
+        } else {
+            totalBuildingsField.setText(String.valueOf(buildingCount));
+        }
 
         // Populate mapper dropdown
         mapperUsernameComboBox.removeAllItems();
@@ -595,6 +700,46 @@ public class ValidationToolPanel extends ToggleDialog {
         for (String userName : sortedUsers) {
             mapperUsernameComboBox.addItem(userName);
         }
+    }
+
+    /**
+     * Count building primitives in the provided DataSet authored by the given mapper username.
+     */
+    private int countBuildingsForMapper(String mapper, DataSet dataSet) {
+        if (dataSet == null || mapper == null) return 0;
+        int count = 0;
+        for (OsmPrimitive p : dataSet.getPrimitives(pr -> pr.hasKey("building"))) {
+            try {
+                User u = p.getUser();
+                if (u != null && mapper.equals(u.getName())) {
+                    count++;
+                }
+            } catch (Exception ignore) {
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Update the totalBuildingsField to reflect the currently selected mapper's building count.
+     */
+    private void updateMapperBuildingCount() {
+        SwingUtilities.invokeLater(() -> {
+            DataSet ds = MainApplication.getLayerManager().getEditDataSet();
+            if (ds == null) {
+                totalBuildingsField.setText("0");
+                return;
+            }
+            String sel = (String) mapperUsernameComboBox.getSelectedItem();
+            if (sel == null || sel.isEmpty()) {
+                // show overall building count
+                int total = 0;
+                for (OsmPrimitive p : ds.getPrimitives(pr -> pr.hasKey("building"))) total++;
+                totalBuildingsField.setText(String.valueOf(total));
+            } else {
+                totalBuildingsField.setText(String.valueOf(countBuildingsForMapper(sel, ds)));
+            }
+        });
     }
 
     /**

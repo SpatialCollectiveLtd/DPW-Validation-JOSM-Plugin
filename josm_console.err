@@ -4,7 +4,7 @@ Build-Date:2025-09-01 09:22:37
 
 Identification: JOSM/1.5 (19439 en) Windows 11 64-Bit
 OS Build number: Windows 10 Pro 24H2 (26100)
-Memory Usage: 412 MB / 6028 MB (118 MB allocated, but free)
+Memory Usage: 308 MB / 6028 MB (101 MB allocated, but free)
 Java version: 21.0.8+9-LTS, Azul Systems, Inc., OpenJDK 64-Bit Server VM
 Look and Feel: com.sun.java.swing.plaf.windows.WindowsLookAndFeel
 Screen: \Display0 1366x768x32bpp@60Hz (scaling 1.00×1.00)
@@ -21,16 +21,16 @@ Plugins:
 + DPWValidationTool (1.0.0)
 
 Last errors/warnings:
-- 00000.619 W: extended font config - overriding 'filename.Malgun_Gothic=malgun.ttf' with 'MALGUN.TTF'
-- 00000.622 W: extended font config - overriding 'filename.Myanmar_Text=mmrtext.ttf' with 'MMRTEXT.TTF'
-- 00000.623 W: extended font config - overriding 'filename.Mongolian_Baiti=monbaiti.ttf' with 'MONBAITI.TTF'
-- 00001.248 E: java.security.KeyStoreException: Windows-ROOT not found. Cause: java.security.NoSuchAlgorithmException: Windows-ROOT KeyStore not available
-- 00001.572 W: Missing plugin main version in plugin DPWValidationTool
-- 00002.503 W: Missing plugin main version in plugin DPWValidationTool
+- 00001.334 W: extended font config - overriding 'filename.Malgun_Gothic=malgun.ttf' with 'MALGUN.TTF'
+- 00001.341 W: extended font config - overriding 'filename.Myanmar_Text=mmrtext.ttf' with 'MMRTEXT.TTF'
+- 00001.343 W: extended font config - overriding 'filename.Mongolian_Baiti=monbaiti.ttf' with 'MONBAITI.TTF'
+- 00002.587 E: java.security.KeyStoreException: Windows-ROOT not found. Cause: java.security.NoSuchAlgorithmException: Windows-ROOT KeyStore not available
+- 00003.003 W: Missing plugin main version in plugin DPWValidationTool
+- 00004.511 W: Missing plugin main version in plugin DPWValidationTool
 
 
 cache.capabilities1637351842=1758015156
-cache.motd.html=1758102031
+cache.motd.html=1758195671
 cache.motd.html.java=21.0.8
 cache.motd.html.lang=En:
 cache.motd.html.version=19439
@@ -49,20 +49,21 @@ imagery.entries=[{max-zoom=22, min-zoom=1, noTileHeaders={"X-VE-Tile-Info":["no-
 ]
 imagery.layers.default=[Bing, EsriWorldImagery, EsriWorldImageryClarity, Mapbox, standard]
 josm.version=19439
+lastDirectory=%UserProfile%\Desktop
 layerlist.lastHeight=20
 layerlist.minimized=true
 mappaint.renderer-class-name=org.openstreetmap.josm.data.osm.visitor.paint.StyledMapRenderer
 mappaint.style.known-defaults=[resource://styles/standard/elemstyles.mapcss]
 mapstyle.lastHeight=0
 minimap.lastHeight=0
-mirror.https://josm.openstreetmap.de/maps=[1758102018499, <josm.cache>\mirror_https___josm.openstreetmap.de_maps]
+mirror.https://josm.openstreetmap.de/maps=[1758195674490, <josm.cache>\mirror_https___josm.openstreetmap.de_maps]
 mirror.https://josm.openstreetmap.de/remote/geofabrik-index-v1-nogeom.json=[1758015154849, <josm.cache>\mirror_https___josm.openstreetmap.de_remote_geofabrik-index-v1-nogeom.json]
-mirror.https://josm.openstreetmap.de/tested=[1758093313177, <josm.cache>\mirror_https___josm.openstreetmap.de_tested]
+mirror.https://josm.openstreetmap.de/tested=[1758195805846, <josm.cache>\mirror_https___josm.openstreetmap.de_tested]
 notes/note_open.lastHeight=0
 org.openstreetmap.josm.gui.dialogs.properties.TagEditHelper$AddTagsDialog.geometry=x=539,y=257,width=287,height=254
 org.openstreetmap.josm.gui.download.DownloadDialog.geometry=x=183,y=84,width=1000,height=600
 org.openstreetmap.josm.gui.help.HelpBrowser.geometry=x=0,y=0,width=600,height=400
-org.openstreetmap.josm.gui.history.HistoryBrowserDialogManager.geometry=x=258,y=134,width=850,height=500
+org.openstreetmap.josm.gui.history.HistoryBrowserDialogManager.geometry=x=76,y=103,width=850,height=500
 org.openstreetmap.josm.gui.io.UploadDialog.geometry=x=283,y=84,width=800,height=600
 org.openstreetmap.josm.gui.preferences.PreferenceDialog.geometry=x=333,y=33,width=800,height=701
 osm-download.bounds=-1.274708;36.920274;-1.270217;36.924766
@@ -83,15 +84,17 @@ remotecontrol.permission.authorization=true
 remotecontrol.permission.export=true
 remotecontrol.permission.open-files=true
 remotecontrol.permission.open-remote-files=true
+search.history=[RA  user:Bolt029, R user:]
 selectionlist.lastHeight=0
 selectionlist.visible=false
-sensitive.keys=[oauth.access-token.key, oauth.access-token.object.OAuth20.api.openstreetmap.org, oauth.access-token.parameters.OAuth20.api.openstreetmap.org, oauth.access-token.secret, osm-server.password, osm-server.username, proxy.pass, proxy.user, sensitive.keys]
-toggleDialogs.width=629
+sensitive.keys=[oauth.access-token.key, oauth.access-token.object.OAuth20.api.openstreetmap.org, oauth.access-token.secret, osm-server.password, osm-server.username, proxy.pass, proxy.user, sensitive.keys]
+toggleDialogs.width=841
 upload.comment.history=[#hotosm-project-20235]
 upload.comment.last-used=1758026236
 upload.source.history=[Maxar-Standard, knowledge, survey, Bing]
 userlist.lastHeight=0
+validator.geometry=x=257,y=289,width=852,height=342
 validator.lastHeight=609
-validator.minimized=false
+validator.minimized=true
 validator.visible=true
 }}}
