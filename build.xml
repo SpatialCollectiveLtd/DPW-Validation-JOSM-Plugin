@@ -19,6 +19,8 @@
 
     <path id="plugin.classpath">
         <pathelement location="${josm.jar}"/>
+        <!-- Add any jars placed in the project's lib/ directory to the classpath (e.g. JDatePicker) -->
+        <fileset dir="lib" includes="**/*.jar"/>
     </path>
 
     <!-- Targets -->
