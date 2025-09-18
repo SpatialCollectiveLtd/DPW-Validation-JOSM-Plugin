@@ -931,4 +931,60 @@ public class ValidationToolPanel extends ToggleDialog {
         }
         return sb.toString();
     }
+
+    private String getDateStringFromPicker() {
+        if (datePickerComponent == null) return null;
+        try {
+            if (datePickerComponent instanceof JTextField) {
+                String txt = ((JTextField) datePickerComponent).getText().trim();
+                if (txt.isEmpty()) return null;
+                // If already in YYYY-MM-DD, return as-is; otherwise attempt to normalize
+                if (txt.matches("\\d{4}-\\d{2}-\\d{2}")) return txt;
+                // try simple common formats: dd/MM/yyyy or dd-MM-yyyy
+                Pattern p = Pattern.compile("(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})");
+                Matcher m = p.matcher(txt);
+                if (m.find()) {
+                    String day = String.format("%02d", Integer.parseInt(m.group(1)));
+                    String month = String.format("%02d", Integer.parseInt(m.group(2)));
+                    String year = m.group(3);
+                    return year + "-" + month + "-" + day;
+                }
+                // else return raw text
+                return txt;
+            } else {
+                // attempt to extract value from JDatePickerImpl via reflection
+                Object picker = datePickerComponent;
+                try {
+                    java.lang.reflect.Method getModel = picker.getClass().getMethod("getModel");
+                    Object model = getModel.invoke(picker);
+                    if (model != null) {
+                        // try getValue()
+                        try {
+                            java.lang.reflect.Method getValue = model.getClass().getMethod("getValue");
+                            Object val = getValue.invoke(model);
+                            if (val != null) return val.toString();
+                        } catch (NoSuchMethodException ignored) {}
+                        // try year/month/day getters
+                        try {
+                            java.lang.reflect.Method getYear = model.getClass().getMethod("getYear");
+                            java.lang.reflect.Method getMonth = model.getClass().getMethod("getMonth");
+                            java.lang.reflect.Method getDay = model.getClass().getMethod("getDay");
+                            Object y = getYear.invoke(model);
+                            Object mo = getMonth.invoke(model);
+                            Object d = getDay.invoke(model);
+                            if (y != null && mo != null && d != null) {
+                                int year = Integer.parseInt(y.toString());
+                                int month = Integer.parseInt(mo.toString()) + 1; // JDatePicker months may be 0-based
+                                int day = Integer.parseInt(d.toString());
+                                return String.format("%04d-%02d-%02d", year, month, day);
+                            }
+                        } catch (NoSuchMethodException ignored) {}
+                    }
+                } catch (NoSuchMethodException ignored) {}
+            }
+        } catch (Exception e) {
+            Logging.trace(e);
+        }
+        return null;
+    }
 }
