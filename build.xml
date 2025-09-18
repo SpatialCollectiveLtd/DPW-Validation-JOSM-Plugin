@@ -38,6 +38,8 @@
 
     <target name="dist" depends="compile" description="Generate the plugin JAR file">
         <jar destfile="${dist.dir}/${plugin.name}.jar" basedir="${build.dir}">
+            <!-- Include any third-party jars from lib/ into the plugin jar so runtime dependencies are available -->
+            <zipgroupfileset dir="lib" includes="**/*.jar"/>
             <manifest>
                 <attribute name="Plugin-Class" value="${plugin.main.class}"/>
                 <attribute name="Plugin-Version" value="${plugin.version}"/>
