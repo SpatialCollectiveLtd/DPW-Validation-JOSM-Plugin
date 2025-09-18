@@ -1,14 +1,26 @@
-DPW Validation Tool - JOSM Plugin
-
-This repository contains the DPW Validation Tool JOSM plugin used by validators to inspect and submit validation results.
-
-Build
+![Build](https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/actions/workflows/ci.yml/badge.svg)
+![License](https://img.shields.io/badge/license-Proprietary-lightgrey.svg)
+![Release](https://img.shields.io/github/v/release/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin)
 
 # DPW Validation Tool for JOSM
 
 The DPW (Digital Public Works) Validation Tool is a specialized plugin for the Java OpenStreetMap Editor (JOSM). Developed for the 2025 Digital Public Works project, this tool streamlines the quality assurance and validation workflow for the Settlement Digitization module.
 
 It provides Final Validators with a secure, efficient, and integrated environment to assess the work of youth mappers, log quality metrics, and produce clean data deliverables — all directly inside JOSM.
+
+---
+
+## Table of Contents
+
+- [Key Features](#key-features)
+- [The Validation Workflow (Validator)](#the-validation-workflow-validator)
+- [Installation (Interactive)](#installation-interactive)
+- [Development & Build](#development--build)
+- [Design Notes & UX](#design-notes--ux)
+- [Contributing](#contributing)
+- [Changelog (Selected)](#changelog-selected)
+- [License & Ownership](#license--ownership)
+- [Interactive Tips](#interactive-tips)
 
 ---
 
@@ -120,10 +132,3 @@ For licensing and commercial questions, contact the maintainers.
 - Exported filenames follow the `Task_<taskId>_<mapper>_<YYYY-MM-DD>.osm` convention.
 
 ---
-
-If you want, I can:
-- Add badges (build status, license, latest release) and a clickable table of contents.
-- Convert a portion of this README into a small web-based interactive demo (HTML + CSS) you can host in the repo's `gh-pages` branch.
-- Break the README into `CONTRIBUTING.md` and `CHANGELOG.md` for clearer project structure.
-
-Which enhancement would you like next?
