@@ -352,8 +352,14 @@ public class ValidationToolPanel extends ToggleDialog {
                         }
                     }
                     if (selected.isEmpty()) {
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "No objects matched the filter.", "No Matches", JOptionPane.INFORMATION_MESSAGE));
-                        return;
+                        // fallback: isolate all primitives with a building tag (user/date search may be too strict)
+                        for (OsmPrimitive p : editDataSet.getPrimitives(pr -> pr.hasKey("building"))) {
+                            selected.add(p);
+                        }
+                        if (selected.isEmpty()) {
+                            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "No objects matched the filter and no buildings were found.", "No Matches", JOptionPane.INFORMATION_MESSAGE));
+                            return;
+                        }
                     }
                     // create new dataset and copy primitives (DataSet has a varargs constructor)
                     DataSet newDs = new DataSet(selected.toArray(new OsmPrimitive[0]));
