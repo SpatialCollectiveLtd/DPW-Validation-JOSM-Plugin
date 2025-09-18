@@ -352,12 +352,14 @@ public class ValidationToolPanel extends ToggleDialog {
                         }
                     }
                     if (selected.isEmpty()) {
-                        // fallback: isolate all primitives with a building tag (user/date search may be too strict)
-                        for (OsmPrimitive p : editDataSet.getPrimitives(pr -> pr.hasKey("building"))) {
+                        // fallback: if the user/date search matched nothing, select all primitives
+                        // This ensures the user always gets a layer to work with; they can then refine
+                        // by tags if needed. The previous behavior limited fallback to buildings only.
+                        for (OsmPrimitive p : editDataSet.getPrimitives(pr -> true)) {
                             selected.add(p);
                         }
                         if (selected.isEmpty()) {
-                            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "No objects matched the filter and no buildings were found.", "No Matches", JOptionPane.INFORMATION_MESSAGE));
+                            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "No objects found in the active dataset.", "No Matches", JOptionPane.INFORMATION_MESSAGE));
                             return;
                         }
                     }
