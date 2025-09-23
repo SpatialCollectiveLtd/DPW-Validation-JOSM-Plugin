@@ -133,7 +133,7 @@ public class ValidationToolPanel extends ToggleDialog {
         gbc.weightx = 0;
         panel.add(new JLabel("Mapper Username:"), gbc);
 
-    // place combo and a small refresh button together but keep date/isolate compact on the right
+    // place mapper combo and refresh button on top row
     gbc.gridx = 1;
     gbc.gridwidth = 3;
     gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -160,12 +160,20 @@ public class ValidationToolPanel extends ToggleDialog {
     refreshMapperListButton.setPreferredSize(new Dimension(26, 22));
     refreshMapperListButton.setToolTipText("Refresh authorized mapper list");
     mapperPanel.add(refreshMapperListButton, mpGbc);
-
-    // Right-side compact controls: date and isolate button
-    mpGbc.gridx = 2;
-    mpGbc.weightx = 0;
-    mpGbc.fill = GridBagConstraints.NONE;
-    JPanel rightControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+    
+    panel.add(mapperPanel, gbc);
+    
+    // Add Date and Isolate controls on a new row under the mapper combo
+    gbc.gridx = 0;
+    gbc.gridy++;
+    gbc.gridwidth = 1;
+    gbc.fill = GridBagConstraints.NONE;
+    gbc.weightx = 0;
+    panel.add(new JLabel("Filter Date:"), gbc);
+    
+    // Date controls in a separate panel
+    JPanel dateIsolatePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+    
     // instantiate a JDatePicker if the library is available in lib/, otherwise fall back to JTextField
     try {
         org.jdatepicker.impl.SqlDateModel model = new org.jdatepicker.impl.SqlDateModel();
@@ -176,20 +184,24 @@ public class ValidationToolPanel extends ToggleDialog {
     } catch (Throwable t) {
         datePickerComponent = new JTextField(10);
     }
-    // keep date picker compact
+    
+    // keep date picker compact but slightly wider for better usability
     if (datePickerComponent instanceof JComponent) {
-        ((JComponent) datePickerComponent).setPreferredSize(new Dimension(110, 24));
+        ((JComponent) datePickerComponent).setPreferredSize(new Dimension(130, 24));
     }
-    rightControls.add(new JLabel("Date:"));
-    rightControls.add(datePickerComponent);
-    // isolate button compact
+    dateIsolatePanel.add(datePickerComponent);
+    
+    // isolate button right next to date picker
     isolateButton = new JButton("Isolate");
     isolateButton.setToolTipText("Isolate work for selected mapper and date");
-    isolateButton.setPreferredSize(new Dimension(120, 24));
-    rightControls.add(isolateButton);
-    mapperPanel.add(rightControls, mpGbc);
-
-    panel.add(mapperPanel, gbc);
+    isolateButton.setPreferredSize(new Dimension(100, 24));
+    dateIsolatePanel.add(isolateButton);
+    
+    gbc.gridx = 1;
+    gbc.gridwidth = 3;
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    gbc.weightx = 1.0;
+    panel.add(dateIsolatePanel, gbc);
 
         // wire refresh mapper list button
         refreshMapperListButton.addActionListener(e -> {
@@ -218,7 +230,7 @@ public class ValidationToolPanel extends ToggleDialog {
             }).start();
         });
 
-        // Total Buildings
+        // Total Buildings - note: after Date and Isolate row
         gbc.gridx = 0;
         gbc.gridy++;
         gbc.gridwidth = 1;
