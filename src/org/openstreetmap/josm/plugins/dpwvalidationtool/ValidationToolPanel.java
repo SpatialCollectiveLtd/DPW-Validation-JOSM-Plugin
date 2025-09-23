@@ -376,18 +376,56 @@ public class ValidationToolPanel extends ToggleDialog {
                             User u = p.getUser();
                             if (u == null) continue;
                             if (!u.getName().equals(mapper)) continue;
-                            // if search compiled correctly we can try evaluating timestamp too; otherwise accept by user
-                            try {
-                                if (p.evaluateCondition(match)) {
-                                    selected.add(p);
-                                } else {
-                                    // p didn't match the full search (maybe timestamp syntax differs) - still accept by user
-                                    selected.add(p);
+                            
+                            // Direct timestamp comparison using Java time API
+                            if (dateString != null && !dateString.isEmpty()) {
+                                // Skip if primitive has no timestamp
+                                if (p.isTimestampEmpty()) {
+                                    Logging.debug("DPWValidationTool: primitive " + p.getId() + " has no timestamp, skipping");
+                                    continue;
                                 }
-                            } catch (Exception ex) {
-                                // evaluation failed for timestamp; accept by user only
-                                selected.add(p);
+                                
+                                try {
+                                    // Parse the selected date (YYYY-MM-DD)
+                                    java.time.LocalDate filterDate = java.time.LocalDate.parse(dateString);
+                                    
+                                    // Get primitive's timestamp as Instant
+                                    java.time.Instant timestamp = p.getInstant();
+                                    if (timestamp == null) {
+                                        Logging.debug("DPWValidationTool: primitive " + p.getId() + " has null instant timestamp");
+                                        continue;
+                                    }
+                                    
+                                    // Convert to LocalDate for date-only comparison (ignore time)
+                                    java.time.LocalDate primitiveDate = timestamp.atZone(java.time.ZoneOffset.UTC).toLocalDate();
+                                    
+                                    // Compare dates (ignoring time portion)
+                                    if (!primitiveDate.equals(filterDate)) {
+                                        Logging.debug("DPWValidationTool: primitive " + p.getId() + " date " + primitiveDate + 
+                                                    " doesn't match filter " + filterDate);
+                                        continue; // Skip if dates don't match
+                                    }
+                                    
+                                    Logging.debug("DPWValidationTool: primitive " + p.getId() + " passed date filter: " + primitiveDate);
+                                } catch (Exception ex) {
+                                    Logging.warn("DPWValidationTool: error checking timestamp for primitive " + p.getId() + 
+                                               ": " + ex.getMessage());
+                                    
+                                    // Fall back to SearchCompiler as a backup method
+                                    try {
+                                        if (!p.evaluateCondition(match)) {
+                                            continue; // SearchCompiler says no match
+                                        }
+                                    } catch (Exception searchEx) {
+                                        // Both timestamp methods failed - continue with next primitive
+                                        Logging.warn("DPWValidationTool: search filter also failed for primitive " + p.getId());
+                                        continue;
+                                    }
+                                }
                             }
+                            
+                            // If we get here, the primitive passed both mapper and date filters
+                            selected.add(p);
                         } catch (Exception ignore) {
                         }
                     }
@@ -1082,6 +1120,20 @@ public class ValidationToolPanel extends ToggleDialog {
             invalidateButton.setEnabled(enable);
         });
     }
+
+    @Override
+    public void destroy() {
+        try {
+            super.destroy();
+        } catch (IllegalArgumentException iae) {
+            // ToggleDialog.destroy may attempt to remove a preference listener that
+            // was never registered or already removed. Swallow this to avoid crash on shutdown.
+            Logging.warn("DPWValidationTool: destroy() - ignored IllegalArgumentException: " + iae.getMessage());
+        } catch (Throwable t) {
+            Logging.error("DPWValidationTool: unexpected error in destroy(): " + t);
+            Logging.trace(t);
+        }
+    }
     private static String jsonEscape(String s) {
         if (s == null) return "";
         StringBuilder sb = new StringBuilder();
@@ -1104,6 +1156,45 @@ public class ValidationToolPanel extends ToggleDialog {
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * Allow the plugin to set a title/icon for the dialog in a safe, reflective way
+     * so we work across JOSM versions that may or may not expose a direct API.
+     */
+    public void setIcon(javax.swing.Icon icon) {
+        if (icon == null) return;
+        try {
+            // Try to call a possible ToggleDialog.setTitleIcon(Icon) if present
+            Class<?> sup = this.getClass().getSuperclass();
+            try {
+                java.lang.reflect.Method m = sup.getMethod("setTitleIcon", javax.swing.Icon.class);
+                m.invoke(this, icon);
+                return;
+            } catch (NoSuchMethodException ignored) {}
+
+            // Fallback: try setIcon
+            try {
+                java.lang.reflect.Method m2 = sup.getMethod("setIcon", javax.swing.Icon.class);
+                m2.invoke(this, icon);
+                return;
+            } catch (NoSuchMethodException ignored) {}
+
+            // As last resort try to set via a titlebar field if exists (best-effort)
+            try {
+                java.lang.reflect.Field tb = sup.getDeclaredField("titleBar");
+                tb.setAccessible(true);
+                Object titleBar = tb.get(this);
+                if (titleBar != null) {
+                    try {
+                        java.lang.reflect.Method setIcon = titleBar.getClass().getMethod("setIcon", javax.swing.Icon.class);
+                        setIcon.invoke(titleBar, icon);
+                    } catch (NoSuchMethodException ignored) {}
+                }
+            } catch (NoSuchFieldException ignored) {}
+        } catch (Exception e) {
+            Logging.trace(e);
+        }
     }
 
     private String getDateStringFromPicker() {
