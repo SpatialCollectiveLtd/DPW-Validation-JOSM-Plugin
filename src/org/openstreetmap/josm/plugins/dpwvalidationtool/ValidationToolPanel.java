@@ -42,6 +42,7 @@ import java.util.Set;
 public class ValidationToolPanel extends ToggleDialog {
 
     private JTextField taskIdField;
+    private JTextField settlementField;
     private JComboBox<String> mapperUsernameComboBox;
     private JTextField totalBuildingsField;
     private JTextArea validatorCommentsArea;
@@ -122,6 +123,22 @@ public class ValidationToolPanel extends ToggleDialog {
         gbc.weightx = 1.0;
         taskIdField = new JTextField();
         panel.add(taskIdField, gbc);
+
+        // Settlement (optional field)
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.gridwidth = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        panel.add(new JLabel("Settlement:"), gbc);
+
+        gbc.gridx = 1;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        settlementField = new JTextField();
+        settlementField.setToolTipText("Optional: Name of the settlement or area being mapped");
+        panel.add(settlementField, gbc);
 
     // NOTE: the mapper-list refresh button will be placed beside the mapper combo (small icon)
 
@@ -793,89 +810,92 @@ public class ValidationToolPanel extends ToggleDialog {
     }
 
     /**
-     * Fetch the authorized mapper usernames from the configured mapper list URL.
-     * Expects the endpoint to return a JSON array of strings, e.g. ["user1","user2"]
+     * Fetch the authorized mapper/validator usernames from the DPW Manager API.
+     * Connects to /api/users endpoint and filters for active Digitizers and Validators.
      */
     private void fetchAuthorizedMappers() throws Exception {
-        String defaultUrl = "https://script.google.com/macros/s/AKfycbytfxwDkZG1qDpgXV4QcplBgq4u9PVSW7yQzfe47UG4dmM_nh5-D6mb7LZ4vxib9KQp/exec";
-        String urlStr = Preferences.main().get("dpw.mapper_list_url", defaultUrl);
-        if (urlStr == null || urlStr.trim().isEmpty()) {
-            throw new IllegalStateException("Mapper list URL is not configured (dpw.mapper_list_url)");
-        }
+        // v2.0: Use Vercel-hosted DPW Manager API
+        String defaultUrl = "https://dpw-mauve.vercel.app/api/users?role=Digitizer,Validator&status=Active";
+        String urlStr = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
+        
+        // Construct full URL with query parameters
+        String fullUrl = urlStr + "/api/users?role=Digitizer,Validator&status=Active";
+        
         // indicate fetching to the user
         SwingUtilities.invokeLater(() -> {
-            fetchStatusLabel.setText("Fetching authorized users...");
+            fetchStatusLabel.setText("Fetching authorized users from DPW Manager...");
             fetchStatusLabel.setBackground(Color.YELLOW);
             updateSubmitButtonsEnabled();
         });
 
-        URL url = new URI(urlStr).toURL();
+        URL url = new URI(fullUrl).toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Accept", "application/json");
-        conn.setConnectTimeout(5000);
-        conn.setReadTimeout(5000);
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(10000);
 
         int rc = conn.getResponseCode();
-        if (rc < 200 || rc >= 300) {
-            StringBuilder err = new StringBuilder();
-            try (BufferedReader ebr = new BufferedReader(new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
-                String l;
-                while ((l = ebr.readLine()) != null) err.append(l);
-            } catch (Exception ignore) {}
-            throw new IllegalStateException("Mapper list endpoint returned HTTP " + rc + ": " + err.toString());
-        }
-
+        
+        // Read response body
         StringBuilder sb = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                rc >= 400 ? conn.getErrorStream() : conn.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             while ((line = br.readLine()) != null) sb.append(line);
         }
-
         String body = sb.toString().trim();
-        // Very small JSON parser for an array of strings or a simple object containing Youth_Registry
-        List<String> result = new ArrayList<>();
-        if (body.startsWith("[") && body.endsWith("]")) {
-            String inner = body.substring(1, body.length() - 1).trim();
-            if (!inner.isEmpty()) {
-                String[] parts = inner.split(",");
-
         
-                for (String p : parts) {
-                    String t = p.trim();
-                    if (t.startsWith("\"") && t.endsWith("\"")) {
-                        t = t.substring(1, t.length() - 1);
-                    }
-                    if (!t.isEmpty()) result.add(t);
+        if (rc < 200 || rc >= 300) {
+            // Try to parse error message from JSON
+            String errorMsg = "HTTP " + rc;
+            try {
+                // Simple error extraction: look for "error" field
+                Pattern errorPattern = Pattern.compile("\"error\"\\s*:\\s*\"([^\"]+)\"");
+                Matcher errorMatcher = errorPattern.matcher(body);
+                if (errorMatcher.find()) {
+                    errorMsg = errorMatcher.group(1);
                 }
-            }
-        } else if (body.startsWith("{") && body.endsWith("}")) {
-            // try to find a Youth_Registry array inside
-            Pattern p = Pattern.compile("\"Youth_Registry\"\\s*:\\s*\\[(.*?)\\]", Pattern.DOTALL);
-            Matcher m = p.matcher(body);
-            if (m.find()) {
-                String inner = m.group(1);
-                String[] parts = inner.split(",");
-                for (String part : parts) {
-                    String t = part.trim();
-                    if (t.startsWith("\"") && t.endsWith("\"")) t = t.substring(1, t.length() - 1);
-                    if (!t.isEmpty()) result.add(t);
-                }
-            } else {
-                // fallback: collect quoted strings (best-effort)
-                Matcher m2 = Pattern.compile("\"([A-Za-z0-9_\\-\\.]+)\"").matcher(body);
-                while (m2.find()) {
-                    String t = m2.group(1);
-                    if (!t.isEmpty()) result.add(t);
-                }
-            }
-        } else {
-            throw new IllegalStateException("Unexpected response from mapper list endpoint");
+            } catch (Exception ignore) {}
+            throw new IllegalStateException("User list API returned error: " + errorMsg);
         }
 
-        // persist the used URL so users don't have to set it manually
+        // Parse JSON response: { "success": true, "data": [...], "count": N }
+        List<String> result = new ArrayList<>();
+        
         try {
-            Preferences.main().put("dpw.mapper_list_url", urlStr);
+            // Extract the "data" array from the response
+            Pattern dataPattern = Pattern.compile("\"data\"\\s*:\\s*\\[(.*?)\\]", Pattern.DOTALL);
+            Matcher dataMatcher = dataPattern.matcher(body);
+            
+            if (dataMatcher.find()) {
+                String dataArray = dataMatcher.group(1);
+                
+                // Extract osm_username from each user object
+                Pattern usernamePattern = Pattern.compile("\"osm_username\"\\s*:\\s*\"([^\"]+)\"");
+                Matcher usernameMatcher = usernamePattern.matcher(dataArray);
+                
+                while (usernameMatcher.find()) {
+                    String username = usernameMatcher.group(1);
+                    if (username != null && !username.trim().isEmpty()) {
+                        result.add(username);
+                    }
+                }
+            } else {
+                throw new IllegalStateException("Response does not contain 'data' array");
+            }
+        } catch (Exception e) {
+            Logging.error("DPWValidationTool: Failed to parse user list response: " + e.getMessage());
+            throw new IllegalStateException("Failed to parse user list from API: " + e.getMessage());
+        }
+
+        if (result.isEmpty()) {
+            Logging.warn("DPWValidationTool: No users found in API response");
+        }
+
+        // persist the used base URL so users don't have to set it manually
+        try {
+            Preferences.main().put("dpw.api_base_url", urlStr);
         } catch (Exception ignore) {
         }
 
@@ -887,7 +907,7 @@ public class ValidationToolPanel extends ToggleDialog {
 
         // Update UI to reflect success
         SwingUtilities.invokeLater(() -> {
-            fetchStatusLabel.setText("Success: User list updated. Ready for validation.");
+            fetchStatusLabel.setText("Success: " + result.size() + " authorized users loaded from DPW Manager.");
             fetchStatusLabel.setBackground(new Color(0x88ff88));
             updateAuthStatus();
             updateSubmitButtonsEnabled();
@@ -896,8 +916,8 @@ public class ValidationToolPanel extends ToggleDialog {
 
 
     private void submitData(String validationStatus) {
-    // Validator pre-flight checks - get current OSM username from JOSM preferences
-    String validatorUsername = Preferences.main().get("osm-server.username", "").trim();
+        // Validator pre-flight checks - get current OSM username from JOSM preferences
+        String validatorUsername = Preferences.main().get("osm-server.username", "").trim();
         if (validatorUsername == null || validatorUsername.trim().isEmpty()) {
             SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
                     "Submission Failed: Cannot identify the current user. Please set your OSM username in JOSM's Connection Settings (Preferences > Connection Settings).",
@@ -930,194 +950,248 @@ public class ValidationToolPanel extends ToggleDialog {
         if (mapperUsername == null) {
             mapperUsername = "";
         }
+        
         // Client-side authorization check: ensure mapper is in authorized list
         synchronized (authorizedMappers) {
-        if (!authorizedMappers.isEmpty() && !authorizedMappers.contains(mapperUsername)) {
-        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
-            "Error: The selected mapper is not a registered participant in this project. Please select a valid user or refresh the mapper list.",
-            "Unauthorized Mapper", JOptionPane.ERROR_MESSAGE));
-        return;
+            if (!authorizedMappers.isEmpty() && !authorizedMappers.contains(mapperUsername)) {
+                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                    "Error: The selected mapper is not a registered participant in this project. Please select a valid user or refresh the mapper list.",
+                    "Unauthorized Mapper", JOptionPane.ERROR_MESSAGE));
+                return;
+            }
         }
-        }
+        
         String totalBuildings = totalBuildingsField.getText();
-    String validatorComments = validatorCommentsArea.getText();
-    // Validator username previously retrieved above via User.getName()
-    String settlement = Preferences.main().get("dpw.settlement", "Mji wa Huruma");
+        String validatorComments = validatorCommentsArea.getText();
+        String settlement = settlementField.getText().trim();
 
         int totalBuildingsInt = 0;
         try {
             totalBuildingsInt = Integer.parseInt(totalBuildings.trim());
         } catch (NumberFormatException e) {
-            // Keep as 0 if parsing fails
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                "Error: Total buildings must be a valid number.",
+                "Invalid Input", JOptionPane.ERROR_MESSAGE));
+            return;
         }
 
+        // Build JSON payload according to v2.0 API spec
         StringBuilder jsonBuilder = new StringBuilder();
-        jsonBuilder.append("{")
-            .append("\"task_id\": \"").append(jsonEscape(taskId)).append("\",")
-            .append("\"settlement\": \"").append(jsonEscape(settlement)).append("\",")
-            .append("\"mapper_username\": \"").append(jsonEscape(mapperUsername)).append("\",")
-            .append("\"validator_username\": \"").append(jsonEscape(validatorUsername)).append("\",")
+        jsonBuilder.append("{");
+        
+        // Optional fields first
+        if (taskId != null && !taskId.trim().isEmpty()) {
+            jsonBuilder.append("\"task_id\": \"").append(jsonEscape(taskId)).append("\",");
+        }
+        if (settlement != null && !settlement.trim().isEmpty()) {
+            jsonBuilder.append("\"settlement\": \"").append(jsonEscape(settlement)).append("\",");
+        }
+        
+        // Required fields (per API spec)
+        jsonBuilder.append("\"mapper_osm_username\": \"").append(jsonEscape(mapperUsername)).append("\",")
+            .append("\"validator_osm_username\": \"").append(jsonEscape(validatorUsername)).append("\",")
             .append("\"total_buildings\": ").append(totalBuildingsInt).append(",");
 
+        // Error count fields (optional, will default to 0 on server if not provided)
         for (int i = 0; i < errorTypes.length; i++) {
             String errorKey = "error_" + errorTypes[i].toLowerCase().replace(' ', '_');
             jsonBuilder.append("\"").append(errorKey).append("\": ").append(errorCounts[i]).append(",");
         }
 
-        jsonBuilder.append("\"validation_status\": \"").append(jsonEscape(validationStatus)).append("\",")
-            .append("\"validator_comments\": \"").append(jsonEscape(validatorComments)).append("\"")
-            .append("}");
+        // Validation status and comments
+        jsonBuilder.append("\"validation_status\": \"").append(jsonEscape(validationStatus)).append("\"");
+        
+        if (validatorComments != null && !validatorComments.trim().isEmpty()) {
+            jsonBuilder.append(",\"validator_comments\": \"").append(jsonEscape(validatorComments)).append("\"");
+        }
+        
+        jsonBuilder.append("}");
 
         sendPostRequest(jsonBuilder.toString());
     }
 
+    /**
+     * Send validation data to the DPW Manager API (/api/validation-log endpoint).
+     * Implements v2.0 API specification with proper JSON response parsing and error handling.
+     */
     private void sendPostRequest(String jsonData) {
         new Thread(() -> {
             setSending(true);
-            String baseUrl = "https://script.google.com/macros/s/AKfycbytfxwDkZG1qDpgXV4QcplBgq4u9PVSW7yQzfe47UG4dmM_nh5-D6mb7LZ4vxib9KQp/exec";
-            Exception lastEx = null;
-            int lastRc = -1;
-            String lastResp = "";
+            
+            // v2.0: Use Vercel-hosted DPW Manager API
+            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
+            String apiUrl = baseUrl + "/api/validation-log";
+            
             try {
-                // First attempt: POST JSON with proper headers
-                try {
-                    URL url = new URI(baseUrl).toURL();
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("POST");
-                    conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                    conn.setRequestProperty("Accept", "application/json, text/plain, */*");
-                    conn.setDoOutput(true);
-                    conn.setConnectTimeout(10000);
-                    conn.setReadTimeout(15000);
+                Logging.info("DPWValidationTool: Submitting validation data to " + apiUrl);
+                Logging.debug("DPWValidationTool: JSON payload: " + jsonData);
+                
+                URL url = new URI(apiUrl).toURL();
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(15000);
 
-                    // Write JSON using try-with-resources to ensure stream closed/flushed
-                    try (OutputStream os = conn.getOutputStream()) {
-                        byte[] input = jsonData.getBytes(StandardCharsets.UTF_8);
-                        os.write(input, 0, input.length);
-                        os.flush();
-                    }
-
-                    lastRc = conn.getResponseCode();
-                    try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                            lastRc >= 400 ? conn.getErrorStream() : conn.getInputStream(), StandardCharsets.UTF_8))) {
-                        StringBuilder response = new StringBuilder();
-                        String responseLine;
-                        while ((responseLine = br.readLine()) != null) {
-                            response.append(responseLine.trim());
-                        }
-                        lastResp = response.toString();
-                    }
-
-                    if (lastRc == HttpURLConnection.HTTP_OK) {
-                        // success
-                        submittedThisSession = true;
-                        final String resp = lastResp == null ? "" : lastResp;
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
-                        return;
-                    } else {
-                        // Non-200 response: show server error body if any
-                        final String resp = lastResp == null ? "" : lastResp;
-                        final int rcSnapshot = lastRc;
-                        final String respSnapshot = lastResp == null ? "" : lastResp;
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Submission failed. Server returned HTTP " + rcSnapshot + "\nResponse: " + respSnapshot, "Submission Failed", JOptionPane.ERROR_MESSAGE));
-                        return;
-                    }
-                } catch (Exception e) {
-                    lastEx = e;
+                // Write JSON payload
+                try (OutputStream os = conn.getOutputStream()) {
+                    byte[] input = jsonData.getBytes(StandardCharsets.UTF_8);
+                    os.write(input, 0, input.length);
+                    os.flush();
                 }
 
-                // Second attempt: Apps Script sometimes expects form-encoded 'payload' param
-                try {
-                    String form = "payload=" + URLEncoder.encode(jsonData, StandardCharsets.UTF_8.name());
-                    URL url2 = new URI(baseUrl).toURL();
-                    HttpURLConnection conn2 = (HttpURLConnection) url2.openConnection();
-                    conn2.setRequestMethod("POST");
-                    conn2.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
-                    conn2.setRequestProperty("Accept", "application/json, text/plain, */*");
-                    conn2.setDoOutput(true);
-                    conn2.setConnectTimeout(10000);
-                    conn2.setReadTimeout(15000);
-
-                    // write form payload with try-with-resources
-                    try (OutputStream os = conn2.getOutputStream()) {
-                        byte[] input = form.getBytes(StandardCharsets.UTF_8);
-                        os.write(input, 0, input.length);
-                        os.flush();
+                int responseCode = conn.getResponseCode();
+                Logging.info("DPWValidationTool: API responded with HTTP " + responseCode);
+                
+                // Read response body
+                StringBuilder response = new StringBuilder();
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                        responseCode >= 400 ? conn.getErrorStream() : conn.getInputStream(), 
+                        StandardCharsets.UTF_8))) {
+                    String responseLine;
+                    while ((responseLine = br.readLine()) != null) {
+                        response.append(responseLine.trim());
                     }
-
-                    lastRc = conn2.getResponseCode();
-                    try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                            lastRc >= 400 ? conn2.getErrorStream() : conn2.getInputStream(), StandardCharsets.UTF_8))) {
-                        StringBuilder response2 = new StringBuilder();
-                        String responseLine;
-                        while ((responseLine = br.readLine()) != null) {
-                            response2.append(responseLine.trim());
-                        }
-                        lastResp = response2.toString();
-                    }
-
-                    if (lastRc == HttpURLConnection.HTTP_OK) {
-                        submittedThisSession = true;
-                        final String resp = lastResp == null ? "" : lastResp;
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
-                        return;
-                    } else {
-                        final String resp = lastResp == null ? "" : lastResp;
-                        final int rcSnapshot2 = lastRc;
-                        final String respSnapshot2 = lastResp == null ? "" : lastResp;
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Submission failed. Server returned HTTP " + rcSnapshot2 + "\nResponse: " + respSnapshot2, "Submission Failed", JOptionPane.ERROR_MESSAGE));
-                        return;
-                    }
-                } catch (Exception e) {
-                    lastEx = e;
                 }
+                
+                String responseBody = response.toString();
+                Logging.debug("DPWValidationTool: API response body: " + responseBody);
 
-                // Third attempt: GET fallback with payload param
-                try {
-                    String qs = "?payload=" + URLEncoder.encode(jsonData, StandardCharsets.UTF_8.name());
-                    URL url3 = new URI(baseUrl + qs).toURL();
-                    HttpURLConnection conn3 = (HttpURLConnection) url3.openConnection();
-                    conn3.setRequestMethod("GET");
-                    conn3.setRequestProperty("Accept", "application/json, text/plain, */*");
-                    conn3.setConnectTimeout(10000);
-                    conn3.setReadTimeout(15000);
-
-                    lastRc = conn3.getResponseCode();
-                    StringBuilder response3 = new StringBuilder();
-                    try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                            lastRc >= 400 ? conn3.getErrorStream() : conn3.getInputStream(), StandardCharsets.UTF_8))) {
-                        String responseLine;
-                        while ((responseLine = br.readLine()) != null) {
-                            response3.append(responseLine.trim());
-                        }
-                    }
-                    lastResp = response3.toString();
-                    if (lastRc == HttpURLConnection.HTTP_OK) {
-                        final String resp = lastResp;
+                // Handle different response codes according to API spec
+                if (responseCode == 201) {
+                    // Success: 201 Created
+                    try {
+                        // Parse success response to extract log_id and names
+                        Pattern logIdPattern = Pattern.compile("\"log_id\"\\s*:\\s*(\\d+)");
+                        Pattern mapperNamePattern = Pattern.compile("\"mapper_name\"\\s*:\\s*\"([^\"]+)\"");
+                        Pattern validatorNamePattern = Pattern.compile("\"validator_name\"\\s*:\\s*\"([^\"]+)\"");
+                        
+                        Matcher logIdMatcher = logIdPattern.matcher(responseBody);
+                        Matcher mapperNameMatcher = mapperNamePattern.matcher(responseBody);
+                        Matcher validatorNameMatcher = validatorNamePattern.matcher(responseBody);
+                        
+                        String logId = logIdMatcher.find() ? logIdMatcher.group(1) : "unknown";
+                        String mapperName = mapperNameMatcher.find() ? mapperNameMatcher.group(1) : "";
+                        String validatorName = validatorNameMatcher.find() ? validatorNameMatcher.group(1) : "";
+                        
                         submittedThisSession = true;
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Data submitted successfully!\nResponse: " + resp, "Success", JOptionPane.INFORMATION_MESSAGE));
-                        return;
+                        
+                        SwingUtilities.invokeLater(() -> {
+                            String successMsg = "✓ Validation log created successfully!\n\n" +
+                                "Log ID: " + logId + "\n" +
+                                "Mapper: " + mapperName + "\n" +
+                                "Validator: " + validatorName + "\n\n" +
+                                "Data has been recorded in the DPW Manager system.";
+                            JOptionPane.showMessageDialog(null, successMsg, "Submission Successful", 
+                                JOptionPane.INFORMATION_MESSAGE);
+                        });
+                        
+                        Logging.info("DPWValidationTool: Submission successful. Log ID: " + logId);
+                        
+                    } catch (Exception e) {
+                        Logging.warn("DPWValidationTool: Could not parse success response details: " + e.getMessage());
+                        submittedThisSession = true;
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, 
+                            "Data submitted successfully!", "Success", JOptionPane.INFORMATION_MESSAGE));
                     }
-                } catch (Exception e) {
-                    lastEx = e;
+                    
+                } else if (responseCode == 400) {
+                    // Bad Request: Missing or invalid fields
+                    String errorMsg = extractErrorMessage(responseBody);
+                    Logging.error("DPWValidationTool: 400 Bad Request - " + errorMsg);
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        String userMsg = "Submission Failed: Invalid Data\n\n" + errorMsg + 
+                            "\n\nPlease check that all required fields are filled correctly.";
+                        JOptionPane.showMessageDialog(null, userMsg, "Validation Error", 
+                            JOptionPane.ERROR_MESSAGE);
+                    });
+                    
+                } else if (responseCode == 404) {
+                    // Not Found: Mapper or Validator username not found in database
+                    String errorMsg = extractErrorMessage(responseBody);
+                    Logging.error("DPWValidationTool: 404 Not Found - " + errorMsg);
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        String userMsg = "Submission Failed: User Not Found\n\n" + errorMsg + 
+                            "\n\nThe mapper or validator username is not registered in the DPW Manager system.\n" +
+                            "Please contact your project manager to add this user.";
+                        JOptionPane.showMessageDialog(null, userMsg, "User Not Found", 
+                            JOptionPane.ERROR_MESSAGE);
+                    });
+                    
+                } else if (responseCode >= 500) {
+                    // Server Error
+                    String errorMsg = extractErrorMessage(responseBody);
+                    Logging.error("DPWValidationTool: 500 Server Error - " + errorMsg);
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        String userMsg = "Submission Failed: Server Error\n\n" +
+                            "The DPW Manager server encountered an error while processing your request.\n" +
+                            "Please try again later or contact support if the problem persists.\n\n" +
+                            "Error: " + errorMsg;
+                        JOptionPane.showMessageDialog(null, userMsg, "Server Error", 
+                            JOptionPane.ERROR_MESSAGE);
+                    });
+                    
+                } else {
+                    // Unexpected response code
+                    String errorMsg = extractErrorMessage(responseBody);
+                    Logging.error("DPWValidationTool: Unexpected HTTP " + responseCode + " - " + errorMsg);
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        String userMsg = "Submission Failed: Unexpected Response\n\n" +
+                            "HTTP " + responseCode + ": " + errorMsg;
+                        JOptionPane.showMessageDialog(null, userMsg, "Submission Failed", 
+                            JOptionPane.ERROR_MESSAGE);
+                    });
                 }
-
-                final int rcFinal = lastRc;
-                final String respFinal = lastResp;
-                final Exception exFinal = lastEx;
+                
+            } catch (Exception e) {
+                Logging.error("DPWValidationTool: Exception during submission: " + e.getMessage());
+                Logging.error(e);
+                
                 SwingUtilities.invokeLater(() -> {
-                    if (exFinal != null) {
-                        Logging.error(exFinal);
-                        JOptionPane.showMessageDialog(null, "An error occurred during submission: " + exFinal.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                    } else {
-                        JOptionPane.showMessageDialog(null, "Data submission failed. Code: " + rcFinal + "\nResponse: " + respFinal, "Error", JOptionPane.ERROR_MESSAGE);
-                    }
+                    String errorMsg = "An error occurred while submitting data:\n\n" + 
+                        e.getClass().getSimpleName() + ": " + e.getMessage() + 
+                        "\n\nPlease check your internet connection and try again.";
+                    JOptionPane.showMessageDialog(null, errorMsg, "Submission Error", 
+                        JOptionPane.ERROR_MESSAGE);
                 });
             } finally {
                 setSending(false);
             }
-
         }).start();
+    }
+    
+    /**
+     * Extract error message from JSON error response.
+     * Expected format: {"success": false, "error": "Error message here"}
+     */
+    private String extractErrorMessage(String jsonResponse) {
+        if (jsonResponse == null || jsonResponse.trim().isEmpty()) {
+            return "No error message provided";
+        }
+        
+        try {
+            // Simple regex to extract "error" field value
+            Pattern errorPattern = Pattern.compile("\"error\"\\s*:\\s*\"([^\"]+)\"");
+            Matcher errorMatcher = errorPattern.matcher(jsonResponse);
+            
+            if (errorMatcher.find()) {
+                return errorMatcher.group(1);
+            }
+        } catch (Exception e) {
+            Logging.trace("DPWValidationTool: Could not parse error message: " + e.getMessage());
+        }
+        
+        // Fallback: return raw response (truncated if too long)
+        if (jsonResponse.length() > 200) {
+            return jsonResponse.substring(0, 200) + "...";
+        }
+        return jsonResponse;
     }
 
     private void updateSubmitButtonsEnabled() {
