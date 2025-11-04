@@ -1,6 +1,7 @@
 package org.openstreetmap.josm.plugins.dpwvalidationtool;
 
 import org.openstreetmap.josm.data.Preferences;
+import org.openstreetmap.josm.data.UserIdentityManager;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.User;
@@ -41,27 +42,63 @@ import java.util.Set;
 
 public class ValidationToolPanel extends ToggleDialog {
 
+    /**
+     * Validation workflow states
+     */
+    private enum ValidationState {
+        IDLE,           // Initial state, no layer isolated
+        ISOLATED,       // Layer isolated, ready for validation
+        SUBMITTED,      // Validation submitted to API
+        EXPORTED        // Data exported, ready for restart
+    }
+
+    /**
+     * Simple data class to store user information from DPW API
+     */
+    private static class UserInfo {
+        String osmUsername;
+        String settlement;
+        
+        UserInfo(String osmUsername, String settlement) {
+            this.osmUsername = osmUsername;
+            this.settlement = settlement != null ? settlement : "";
+        }
+    }
+
     private JTextField taskIdField;
     private JTextField settlementField;
     private JComboBox<String> mapperUsernameComboBox;
     private JTextField totalBuildingsField;
     private JTextArea validatorCommentsArea;
     private List<String> authorizedMappers = new ArrayList<>();
+    private Map<String, String> mapperSettlements = new HashMap<>(); // username -> settlement mapping
     private JLabel authStatusLabel;
     private JLabel fetchStatusLabel;
     private JButton validateButton;
     private JButton invalidateButton;
-    private JButton refreshButton;
     private JButton refreshMapperListButton;
-    private JButton forceSubmitButton;
     private javax.swing.JComponent datePickerComponent;
     private JButton isolateButton;
-    private final JButton exportLayerButton = new JButton("Export Validated Layer");
-    private volatile boolean allowForceSubmit = false;
     private volatile boolean isSending = false;
     private volatile boolean isFetchingMappers = false;
     private JDialog sendingDialog;
     private boolean submittedThisSession = false;
+    
+    // v3.0 - Workflow state management
+    private ValidationState currentState = ValidationState.IDLE;
+    private OsmDataLayer isolatedLayer = null;
+    private String lastValidationStatus = null; // "Validated" or "Rejected"
+    
+    // v3.0.1 - Cloud upload integration
+    private int lastValidationLogId = -1;
+    private int mapperUserId = -1;
+    private int validatorUserId = -1;
+    private String googleDriveFileUrl = null;
+    
+    // v3.0 - Validation Preview Panel
+    private JPanel validationPreviewPanel;
+    private JTextArea previewTextArea;
+    private boolean previewExpanded = false;
 
     private final String[] errorTypes = {
         "Hanging Nodes", "Overlapping Buildings", "Buildings Crossing Highway",
@@ -73,9 +110,9 @@ public class ValidationToolPanel extends ToggleDialog {
     private JLabel[] errorCountLabels = new JLabel[errorTypes.length];
 
     public ValidationToolPanel() {
-        super(I18n.tr("DPW Validation Tool v2.0"), "validator", I18n.tr("Open DPW Validation Tool"), null, 150);
+        super(I18n.tr("DPW Validation Tool v3.0.1"), "validator", I18n.tr("Open DPW Validation Tool"), null, 150);
         try {
-            Logging.info("DPWValidationTool: constructing ValidationToolPanel v2.0");
+            Logging.info("DPWValidationTool: constructing ValidationToolPanel v3.0.1");
             setupUI();
             updatePanelData();
             // Kick off an initial authorized-mapper fetch in background
@@ -95,7 +132,7 @@ public class ValidationToolPanel extends ToggleDialog {
                     setFetchingMappers(false);
                 }
             }).start();
-            Logging.info("DPWValidationTool: ValidationToolPanel v2.0 constructed");
+            Logging.info("DPWValidationTool: ValidationToolPanel v3.0.1 constructed");
         } catch (Throwable t) {
             Logging.error(t);
         }
@@ -137,7 +174,9 @@ public class ValidationToolPanel extends ToggleDialog {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         settlementField = new JTextField();
-        settlementField.setToolTipText("Optional: Name of the settlement or area being mapped");
+        settlementField.setToolTipText("Auto-filled from DPW system based on selected mapper");
+        settlementField.setEditable(false); // Make read-only, auto-filled from API
+        settlementField.setBackground(new Color(240, 240, 240)); // Gray background to indicate read-only
         panel.add(settlementField, gbc);
 
     // NOTE: the mapper-list refresh button will be placed beside the mapper combo (small icon)
@@ -313,22 +352,53 @@ public class ValidationToolPanel extends ToggleDialog {
     authStatusLabel.setBackground(Color.LIGHT_GRAY);
     panel.add(authStatusLabel, gbc);
 
-        // Action Buttons - place each button into the GridBag so they reflow with width
+        // v3.0 - Validation Preview Panel (collapsible)
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.gridwidth = 3;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        
+        validationPreviewPanel = new JPanel(new BorderLayout());
+        validationPreviewPanel.setBorder(BorderFactory.createTitledBorder("📊 Validation Summary"));
+        validationPreviewPanel.setVisible(false); // Hidden by default
+        
+        previewTextArea = new JTextArea(8, 40);
+        previewTextArea.setEditable(false);
+        previewTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
+        previewTextArea.setBackground(new Color(245, 245, 245));
+        JScrollPane previewScroll = new JScrollPane(previewTextArea);
+        
+        JButton togglePreviewButton = new JButton("▼ Show Summary");
+        togglePreviewButton.addActionListener(e -> {
+            previewExpanded = !previewExpanded;
+            if (previewExpanded) {
+                updateValidationPreview();
+                previewScroll.setVisible(true);
+                togglePreviewButton.setText("▲ Hide Summary");
+            } else {
+                previewScroll.setVisible(false);
+                togglePreviewButton.setText("▼ Show Summary");
+            }
+            validationPreviewPanel.revalidate();
+            validationPreviewPanel.repaint();
+        });
+        
+        validationPreviewPanel.add(togglePreviewButton, BorderLayout.NORTH);
+        validationPreviewPanel.add(previewScroll, BorderLayout.CENTER);
+        previewScroll.setVisible(false);
+        
+        panel.add(validationPreviewPanel, gbc);
+
+        // Action Buttons - simplified workflow
     validateButton = new JButton("Accept");
     validateButton.setToolTipText("Mark this task as validated (accept)");
     invalidateButton = new JButton("Reject");
     invalidateButton.setToolTipText("Mark this task as rejected (invalidate)");
-    refreshButton = new JButton("Scan");
-    refreshButton.setToolTipText("Rescan the active layer for buildings and mappers");
-    forceSubmitButton = new JButton("Force");
-    forceSubmitButton.setToolTipText("Force submit even if mapper not authorised (use with caution)");
 
     // Use a compact FlowLayout so buttons don't expand when the panel is narrowed
     JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
     actionPanel.add(validateButton);
     actionPanel.add(invalidateButton);
-    actionPanel.add(refreshButton);
-    actionPanel.add(forceSubmitButton);
 
         gbc.gridx = 0;
         gbc.gridy++;
@@ -339,51 +409,72 @@ public class ValidationToolPanel extends ToggleDialog {
         createLayout(panel, false, null);
 
         // Action Listeners
-        validateButton.addActionListener(e -> submitData("Validated"));
-        invalidateButton.addActionListener(e -> submitData("Rejected"));
-        refreshButton.addActionListener(e -> {
-            try {
-                updatePanelData();
-            } catch (Exception ex) {
-                Logging.error(ex);
-                JOptionPane.showMessageDialog(null, "Error refreshing layer: " + ex.getMessage(), "Refresh Error", JOptionPane.ERROR_MESSAGE);
+        validateButton.addActionListener(e -> {
+            // v3.0 - Show enhanced confirmation dialog before accepting
+            if (showConfirmationDialog("Validated")) {
+                submitData("Validated");
             }
         });
-
-        forceSubmitButton.addActionListener(e -> {
-            int ok = JOptionPane.showConfirmDialog(null, "Force submit will bypass the authorized mapper list. Continue?", "Confirm Force Submit", JOptionPane.YES_NO_OPTION);
-            if (ok == JOptionPane.YES_OPTION) {
-                allowForceSubmit = true;
-                forceSubmitButton.setEnabled(false);
-                forceSubmitButton.setText("Force Submit (ON)");
+        invalidateButton.addActionListener(e -> {
+            // v3.0 - Show enhanced confirmation dialog before rejecting
+            if (showConfirmationDialog("Rejected")) {
+                submitData("Rejected");
             }
         });
-
-        // Export button default disabled
-        exportLayerButton.setEnabled(false);
-        exportLayerButton.setToolTipText("Export the isolated validated layer to an .osm file");
-
-    // Place export button on its own row below the other action buttons for clarity
-    gbc.gridx = 0;
-    gbc.gridy++;
-    gbc.gridwidth = 3;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    JPanel exportPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-    exportPanel.add(exportLayerButton);
-    panel.add(exportPanel, gbc);
 
         // Isolate action listener
         isolateButton.addActionListener(e -> {
             isolateButton.setEnabled(false);
             new Thread(() -> {
                 try {
-                    String mapper = (String) mapperUsernameComboBox.getSelectedItem();
-                    if (mapper == null) mapper = "";
+                    // CRITICAL: Date validation - must be set before isolation
                     String dateString = getDateStringFromPicker();
-                    if (dateString == null || dateString.isEmpty()) {
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Please select a date.", "No Date", JOptionPane.WARNING_MESSAGE));
+                    if (dateString == null || dateString.isEmpty() || dateString.equals("YYYY-MM-DD")) {
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, 
+                            "Please select a date before isolating work.\n\n" +
+                            "Date selection is mandatory to ensure proper data filtering.",
+                            "Date Required", 
+                            JOptionPane.ERROR_MESSAGE));
                         return;
                     }
+                    
+                    // CRITICAL: Authorization check - current user must be authorized
+                    String currentValidator = getCurrentValidator();
+                    if (currentValidator == null || currentValidator.isEmpty()) {
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                            "Cannot isolate work: You are not authenticated with OpenStreetMap.\n\n" +
+                            "Please authenticate with OSM in JOSM:\n" +
+                            "1. Go to Edit → Preferences → Connection Settings\n" +
+                            "2. Click 'Authorize now' to authenticate with OSM\n" +
+                            "3. Complete the OAuth authorization process",
+                            "Authentication Required",
+                            JOptionPane.ERROR_MESSAGE));
+                        return;
+                    }
+                    
+                    // Check if current user is authorized for this project (case-insensitive)
+                    synchronized (authorizedMappers) {
+                        if (!authorizedMappers.isEmpty()) {
+                            final String validatorToCheck = currentValidator;
+                            boolean isAuthorized = authorizedMappers.stream()
+                                .anyMatch(user -> user.equalsIgnoreCase(validatorToCheck));
+                            
+                            if (!isAuthorized) {
+                                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                                    "Access Denied: You are not authorized for this project.\n\n" +
+                                    "Current user: " + validatorToCheck + "\n" +
+                                    "Authorized mappers: " + authorizedMappers.size() + " users\n\n" +
+                                    "Please contact your project manager to request access.\n\n" +
+                                    "Note: Only authorized project members can isolate and validate data.",
+                                    "Authorization Required",
+                                    JOptionPane.ERROR_MESSAGE));
+                                return;
+                            }
+                        }
+                    }
+                    
+                    String mapper = (String) mapperUsernameComboBox.getSelectedItem();
+                    if (mapper == null) mapper = "";
                     String search = "user:'" + mapper + "' timestamp:" + dateString;
                     // create and apply search to current active layer
                     DataSet editDataSet = MainApplication.getLayerManager().getEditDataSet();
@@ -533,8 +624,13 @@ public class ValidationToolPanel extends ToggleDialog {
                     OsmDataLayer newLayer = new OsmDataLayer(newDs, layerName, null);
                     MainApplication.getLayerManager().addLayer(newLayer);
                     MainApplication.getLayerManager().setActiveLayer(newLayer);
+                    
+                    // v3.0 - Track the isolated layer and update state
+                    isolatedLayer = newLayer;
+                    currentState = ValidationState.ISOLATED;
+                    
                     SwingUtilities.invokeLater(() -> {
-                        exportLayerButton.setEnabled(true);
+                        updateWorkflowState();
                         JOptionPane.showMessageDialog(null, "Isolated layer created: " + layerName, "Isolated", JOptionPane.INFORMATION_MESSAGE);
                     });
                 } catch (Exception ex) {
@@ -542,49 +638,6 @@ public class ValidationToolPanel extends ToggleDialog {
                     SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Failed to isolate work: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE));
                 } finally {
                     SwingUtilities.invokeLater(() -> isolateButton.setEnabled(true));
-                }
-            }).start();
-        });
-
-        // Export action listener
-        exportLayerButton.addActionListener(e -> {
-            new Thread(() -> {
-                try {
-                    org.openstreetmap.josm.gui.layer.Layer active = MainApplication.getLayerManager().getActiveLayer();
-                    if (!(active instanceof OsmDataLayer)) {
-                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Active layer is not an OSM data layer.", "Cannot Export", JOptionPane.ERROR_MESSAGE));
-                        return;
-                    }
-                    String taskId = taskIdField.getText().trim();
-                    String mapper = (String) mapperUsernameComboBox.getSelectedItem();
-                    if (mapper == null) mapper = "";
-                    String dateString = getDateStringFromPicker();
-                    String filename = String.format("Task_%s_%s_%s.osm", taskId.isEmpty() ? "unknown" : taskId, mapper, dateString == null ? "unknown" : dateString);
-                    OsmDataLayer odl = (OsmDataLayer) active;
-                    // Show a file chooser with a suggested filename
-                    SwingUtilities.invokeLater(() -> {
-                        JFileChooser chooser = new JFileChooser();
-                        chooser.setDialogTitle("Export Validated Layer");
-                        chooser.setSelectedFile(new java.io.File(filename));
-                        int res = chooser.showSaveDialog(MainApplication.getMainFrame());
-                        if (res != JFileChooser.APPROVE_OPTION) return;
-                        java.io.File file = chooser.getSelectedFile();
-                        try {
-                            // Write DataSet to file using JOSM OsmWriter
-                            try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), java.nio.charset.StandardCharsets.UTF_8))) {
-                                OsmWriter w = OsmWriterFactory.createOsmWriter(pw, true, org.openstreetmap.josm.io.OsmWriter.DEFAULT_API_VERSION);
-                                w.write(odl.getDataSet());
-                                pw.flush();
-                                exportLayerButton.setEnabled(false);
-                            }
-                        } catch (Exception ex) {
-                            Logging.error(ex);
-                            JOptionPane.showMessageDialog(null, "Failed to export layer: " + ex.getMessage(), "Export Error", JOptionPane.ERROR_MESSAGE);
-                        }
-                    });
-                } catch (Exception ex) {
-                    Logging.error(ex);
-                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Failed to export layer: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE));
                 }
             }).start();
         });
@@ -604,6 +657,8 @@ public class ValidationToolPanel extends ToggleDialog {
         mapperUsernameComboBox.addItemListener(e -> updateAuthStatus());
     // when mapper selection changes, update the building count shown (mapper-specific)
     mapperUsernameComboBox.addItemListener(e -> updateMapperBuildingCount());
+    // when mapper selection changes, auto-fill settlement from DPW data
+    mapperUsernameComboBox.addItemListener(e -> updateMapperSettlement());
     }
 
     private void setFetchingMappers(boolean fetching) {
@@ -624,9 +679,7 @@ public class ValidationToolPanel extends ToggleDialog {
         SwingUtilities.invokeLater(() -> {
             validateButton.setEnabled(!sending && !taskIdField.getText().trim().isEmpty());
             invalidateButton.setEnabled(!sending && !taskIdField.getText().trim().isEmpty());
-            refreshButton.setEnabled(!sending);
             refreshMapperListButton.setEnabled(!sending && !isFetchingMappers);
-            forceSubmitButton.setEnabled(!sending && !allowForceSubmit);
             if (sending) {
                 showSendingDialog();
             } else {
@@ -810,16 +863,44 @@ public class ValidationToolPanel extends ToggleDialog {
     }
 
     /**
+     * Update the settlement field based on selected mapper's data from DPW system.
+     * Auto-fills the settlement from the mapper's profile in the DPW database.
+     */
+    private void updateMapperSettlement() {
+        SwingUtilities.invokeLater(() -> {
+            String selectedMapper = (String) mapperUsernameComboBox.getSelectedItem();
+            if (selectedMapper == null || selectedMapper.trim().isEmpty()) {
+                settlementField.setText("");
+                return;
+            }
+            
+            // Look up settlement for this mapper (case-insensitive)
+            String settlement = null;
+            synchronized (mapperSettlements) {
+                for (Map.Entry<String, String> entry : mapperSettlements.entrySet()) {
+                    if (entry.getKey().equalsIgnoreCase(selectedMapper)) {
+                        settlement = entry.getValue();
+                        break;
+                    }
+                }
+            }
+            
+            settlementField.setText(settlement != null ? settlement : "");
+            Logging.debug("DPWValidationTool: Auto-filled settlement '" + settlement + "' for mapper '" + selectedMapper + "'");
+        });
+    }
+
+    /**
      * Fetch the authorized mapper/validator usernames from the DPW Manager API.
-     * Connects to /api/users endpoint and filters for active Digitizers and Validators.
+     * Connects to /api/users endpoint with exclude_managers=true for security.
+     * Per v2.1 API spec: ALWAYS include exclude_managers=true to prevent exposing admin accounts.
      */
     private void fetchAuthorizedMappers() throws Exception {
-        // v2.0: Use Vercel-hosted DPW Manager API
-        String defaultUrl = "https://dpw-mauve.vercel.app/api/users?role=Digitizer,Validator&status=Active";
+        // v2.1: Use Vercel-hosted DPW Manager API with security parameter
         String urlStr = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
         
-        // Construct full URL with query parameters
-        String fullUrl = urlStr + "/api/users?role=Digitizer,Validator&status=Active";
+        // Construct full URL with query parameters (SECURITY: exclude_managers=true is REQUIRED)
+        String fullUrl = urlStr + "/api/users?exclude_managers=true&status=Active";
         
         // indicate fetching to the user
         SwingUtilities.invokeLater(() -> {
@@ -861,35 +942,17 @@ public class ValidationToolPanel extends ToggleDialog {
         }
 
         // Parse JSON response: { "success": true, "data": [...], "count": N }
-        List<String> result = new ArrayList<>();
+        // Extract usernames and settlements
+        List<UserInfo> userInfoList = new ArrayList<>();
         
         try {
-            // Extract the "data" array from the response
-            Pattern dataPattern = Pattern.compile("\"data\"\\s*:\\s*\\[(.*?)\\]", Pattern.DOTALL);
-            Matcher dataMatcher = dataPattern.matcher(body);
-            
-            if (dataMatcher.find()) {
-                String dataArray = dataMatcher.group(1);
-                
-                // Extract osm_username from each user object
-                Pattern usernamePattern = Pattern.compile("\"osm_username\"\\s*:\\s*\"([^\"]+)\"");
-                Matcher usernameMatcher = usernamePattern.matcher(dataArray);
-                
-                while (usernameMatcher.find()) {
-                    String username = usernameMatcher.group(1);
-                    if (username != null && !username.trim().isEmpty()) {
-                        result.add(username);
-                    }
-                }
-            } else {
-                throw new IllegalStateException("Response does not contain 'data' array");
-            }
+            userInfoList = parseUserListJson(body);
         } catch (Exception e) {
             Logging.error("DPWValidationTool: Failed to parse user list response: " + e.getMessage());
             throw new IllegalStateException("Failed to parse user list from API: " + e.getMessage());
         }
 
-        if (result.isEmpty()) {
+        if (userInfoList.isEmpty()) {
             Logging.warn("DPWValidationTool: No users found in API response");
         }
 
@@ -899,29 +962,1350 @@ public class ValidationToolPanel extends ToggleDialog {
         } catch (Exception ignore) {
         }
 
-        // replace authorizedMappers atomically
+        // Extract usernames and build settlement mapping
+        List<String> usernames = new ArrayList<>();
+        Map<String, String> settlements = new HashMap<>();
+        for (UserInfo user : userInfoList) {
+            usernames.add(user.osmUsername);
+            settlements.put(user.osmUsername, user.settlement);
+        }
+
+        // replace authorizedMappers and mapperSettlements atomically
         synchronized (authorizedMappers) {
             authorizedMappers.clear();
-            authorizedMappers.addAll(result);
+            authorizedMappers.addAll(usernames);
+        }
+        
+        synchronized (mapperSettlements) {
+            mapperSettlements.clear();
+            mapperSettlements.putAll(settlements);
         }
 
         // Update UI to reflect success
+        final int userCount = usernames.size();
         SwingUtilities.invokeLater(() -> {
-            fetchStatusLabel.setText("Success: " + result.size() + " authorized users loaded from DPW Manager.");
+            fetchStatusLabel.setText("Success: " + userCount + " authorized users loaded from DPW Manager.");
             fetchStatusLabel.setBackground(new Color(0x88ff88));
             updateAuthStatus();
             updateSubmitButtonsEnabled();
         });
     }
 
+    /**
+     * Parse the user list JSON response from the API.
+     * Extracts osm_username and settlement for each user.
+     * Expected format: { "success": true, "data": [{"osm_username": "user1", "settlement": "Area1"}, ...], "count": N }
+     * 
+     * @param json The JSON response body
+     * @return List of UserInfo objects containing username and settlement
+     * @throws Exception if parsing fails
+     */
+    private List<UserInfo> parseUserListJson(String json) throws Exception {
+        List<UserInfo> users = new ArrayList<>();
+        
+        // Find the "data" array
+        int dataStart = json.indexOf("\"data\"");
+        if (dataStart == -1) {
+            throw new IllegalStateException("Response does not contain 'data' field");
+        }
+        
+        // Find the opening bracket of the data array
+        int arrayStart = json.indexOf('[', dataStart);
+        if (arrayStart == -1) {
+            throw new IllegalStateException("'data' field is not an array");
+        }
+        
+        // Find the matching closing bracket
+        int arrayEnd = findMatchingBracket(json, arrayStart);
+        if (arrayEnd == -1) {
+            throw new IllegalStateException("Malformed 'data' array");
+        }
+        
+        String dataArray = json.substring(arrayStart + 1, arrayEnd);
+        
+        // Parse each user object in the array - extract both username and settlement
+        int pos = 0;
+        while (pos < dataArray.length()) {
+            // Find the start of next user object
+            int objStart = dataArray.indexOf('{', pos);
+            if (objStart == -1) {
+                break; // No more objects
+            }
+            
+            // Find the end of this user object
+            int objEnd = findMatchingBrace(dataArray, objStart);
+            if (objEnd == -1) {
+                pos = objStart + 1;
+                continue;
+            }
+            
+            String userObj = dataArray.substring(objStart, objEnd + 1);
+            
+            // Extract osm_username
+            String username = extractJsonField(userObj, "osm_username");
+            
+            // Extract settlement (may be null or empty)
+            String settlement = extractJsonField(userObj, "settlement");
+            
+            if (username != null && !username.trim().isEmpty()) {
+                users.add(new UserInfo(username, settlement));
+            }
+            
+            pos = objEnd + 1;
+        }
+        
+        return users;
+    }
+    
+    /**
+     * Extract a string field value from a JSON object string.
+     * Returns null if field not found.
+     */
+    private String extractJsonField(String jsonObj, String fieldName) {
+        int fieldStart = jsonObj.indexOf("\"" + fieldName + "\"");
+        if (fieldStart == -1) {
+            return null;
+        }
+        
+        // Find the colon after the field name
+        int colonPos = jsonObj.indexOf(':', fieldStart);
+        if (colonPos == -1) {
+            return null;
+        }
+        
+        // Skip whitespace after colon
+        int pos = colonPos + 1;
+        while (pos < jsonObj.length() && Character.isWhitespace(jsonObj.charAt(pos))) {
+            pos++;
+        }
+        
+        if (pos >= jsonObj.length()) {
+            return null;
+        }
+        
+        // Check if value is null
+        if (jsonObj.startsWith("null", pos)) {
+            return null;
+        }
+        
+        // Find the opening quote of the value
+        if (jsonObj.charAt(pos) != '"') {
+            return null; // Not a string value
+        }
+        
+        // Find the closing quote, handling escaped quotes
+        int valueEnd = findClosingQuote(jsonObj, pos + 1);
+        if (valueEnd == -1) {
+            return null;
+        }
+        
+        // Extract and unescape the value
+        return unescapeJsonString(jsonObj.substring(pos + 1, valueEnd));
+    }
+    
+    /**
+     * Find the matching closing brace for an opening brace.
+     */
+    private int findMatchingBrace(String str, int openPos) {
+        if (openPos >= str.length() || str.charAt(openPos) != '{') {
+            return -1;
+        }
+        
+        int depth = 1;
+        boolean inString = false;
+        boolean escaped = false;
+        
+        for (int i = openPos + 1; i < str.length(); i++) {
+            char c = str.charAt(i);
+            
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            
+            if (c == '\\') {
+                escaped = true;
+                continue;
+            }
+            
+            if (c == '"') {
+                inString = !inString;
+                continue;
+            }
+            
+            if (inString) {
+                continue;
+            }
+            
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        
+        return -1;
+    }
+    
+    /**
+     * Find the matching closing bracket for an opening bracket.
+     */
+    private int findMatchingBracket(String str, int openPos) {
+        if (openPos >= str.length() || str.charAt(openPos) != '[') {
+            return -1;
+        }
+        
+        int depth = 1;
+        boolean inString = false;
+        boolean escaped = false;
+        
+        for (int i = openPos + 1; i < str.length(); i++) {
+            char c = str.charAt(i);
+            
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            
+            if (c == '\\') {
+                escaped = true;
+                continue;
+            }
+            
+            if (c == '"') {
+                inString = !inString;
+                continue;
+            }
+            
+            if (inString) {
+                continue;
+            }
+            
+            if (c == '[') {
+                depth++;
+            } else if (c == ']') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        
+        return -1;
+    }
+    
+    /**
+     * Find the closing quote of a JSON string value, handling escaped quotes.
+     */
+    private int findClosingQuote(String str, int startPos) {
+        boolean escaped = false;
+        
+        for (int i = startPos; i < str.length(); i++) {
+            char c = str.charAt(i);
+            
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            
+            if (c == '\\') {
+                escaped = true;
+                continue;
+            }
+            
+            if (c == '"') {
+                return i;
+            }
+        }
+        
+        return -1;
+    }
+    
+    /**
+     * Unescape a JSON string value (handles escape sequences like quotes, backslash, newline, tab, unicode).
+     */
+    private String unescapeJsonString(String str) {
+        StringBuilder result = new StringBuilder();
+        boolean escaped = false;
+        
+        for (int i = 0; i < str.length(); i++) {
+            char c = str.charAt(i);
+            
+            if (escaped) {
+                switch (c) {
+                    case '"':
+                    case '\\':
+                    case '/':
+                        result.append(c);
+                        break;
+                    case 'n':
+                        result.append('\n');
+                        break;
+                    case 'r':
+                        result.append('\r');
+                        break;
+                    case 't':
+                        result.append('\t');
+                        break;
+                    case 'b':
+                        result.append('\b');
+                        break;
+                    case 'f':
+                        result.append('\f');
+                        break;
+                    case 'u':
+                        // Unicode escape sequence (4 hex digits)
+                        if (i + 4 < str.length()) {
+                            try {
+                                String hex = str.substring(i + 1, i + 5);
+                                int codePoint = Integer.parseInt(hex, 16);
+                                result.append((char) codePoint);
+                                i += 4;
+                            } catch (NumberFormatException e) {
+                                // Invalid unicode escape, keep as-is
+                                result.append('\\').append(c);
+                            }
+                        } else {
+                            result.append('\\').append(c);
+                        }
+                        break;
+                    default:
+                        // Unknown escape, keep as-is
+                        result.append('\\').append(c);
+                        break;
+                }
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else {
+                result.append(c);
+            }
+        }
+        
+        return result.toString();
+    }
+
+    /**
+     * Reset the validation session to allow a new submission.
+     * Clears all form fields and resets the submission flag.
+     */
+    private void resetValidationSession() {
+        submittedThisSession = false;
+        
+        // v3.0 - Reset workflow state
+        currentState = ValidationState.IDLE;
+        isolatedLayer = null;
+        lastValidationStatus = null;
+        
+        // Clear form fields
+        taskIdField.setText("");
+        settlementField.setText("");
+        validatorCommentsArea.setText("");
+        
+        // Reset error counts
+        for (int i = 0; i < errorCounts.length; i++) {
+            errorCounts[i] = 0;
+            errorCountLabels[i].setText("0");
+        }
+        
+        // Reset date picker
+        try {
+            if (datePickerComponent instanceof org.jdatepicker.impl.JDatePickerImpl) {
+                org.jdatepicker.impl.JDatePickerImpl picker = (org.jdatepicker.impl.JDatePickerImpl) datePickerComponent;
+                picker.getModel().setValue(null);
+            } else if (datePickerComponent instanceof JTextField) {
+                ((JTextField) datePickerComponent).setText("YYYY-MM-DD");
+            }
+        } catch (Exception e) {
+            Logging.warn("DPWValidationTool: Could not reset date picker: " + e.getMessage());
+        }
+        
+        // Keep mapper selection and total buildings as-is (user may want to validate more from same mapper)
+        
+        updateSubmitButtonsEnabled();
+        updateWorkflowState();
+        
+        Logging.info("DPWValidationTool: Validation session reset");
+    }
+    
+    /**
+     * Update UI based on current workflow state.
+     * v3.0 - New method to manage state-based UI updates.
+     */
+    private void updateWorkflowState() {
+        SwingUtilities.invokeLater(() -> {
+            // Enable/disable buttons based on state
+            switch (currentState) {
+                case IDLE:
+                    isolateButton.setEnabled(true);
+                    validateButton.setEnabled(false);
+                    invalidateButton.setEnabled(false);
+                    validationPreviewPanel.setVisible(false);
+                    break;
+                case ISOLATED:
+                    isolateButton.setEnabled(true);
+                    validateButton.setEnabled(!taskIdField.getText().trim().isEmpty());
+                    invalidateButton.setEnabled(!taskIdField.getText().trim().isEmpty());
+                    validationPreviewPanel.setVisible(true);
+                    break;
+                case SUBMITTED:
+                    isolateButton.setEnabled(false);
+                    validateButton.setEnabled(false);
+                    invalidateButton.setEnabled(false);
+                    break;
+                case EXPORTED:
+                    isolateButton.setEnabled(false);
+                    validateButton.setEnabled(false);
+                    invalidateButton.setEnabled(false);
+                    break;
+            }
+        });
+    }
+    
+    /**
+     * Update the validation preview panel with current form data.
+     * v3.0 - Shows summary of validation before submission.
+     */
+    private void updateValidationPreview() {
+        StringBuilder preview = new StringBuilder();
+        preview.append("═══════════════════════════════════════════════════════\n");
+        preview.append("              VALIDATION SUMMARY\n");
+        preview.append("═══════════════════════════════════════════════════════\n\n");
+        
+        // Task Information
+        String taskId = taskIdField.getText().trim();
+        String mapper = (String) mapperUsernameComboBox.getSelectedItem();
+        String settlement = settlementField.getText().trim();
+        String dateString = getDateStringFromPicker();
+        String totalBuildings = totalBuildingsField.getText().trim();
+        
+        preview.append("Task ID:         ").append(taskId.isEmpty() ? "(not specified)" : taskId).append("\n");
+        preview.append("Settlement:      ").append(settlement.isEmpty() ? "(not specified)" : settlement).append("\n");
+        preview.append("Mapper:          ").append(mapper != null ? mapper : "(not selected)").append("\n");
+        preview.append("Date:            ").append(dateString != null ? dateString : "(not specified)").append("\n");
+        preview.append("Total Buildings: ").append(totalBuildings).append("\n\n");
+        
+        // Error Summary
+        preview.append("───────────────────────────────────────────────────────\n");
+        preview.append("                 ERROR BREAKDOWN\n");
+        preview.append("───────────────────────────────────────────────────────\n\n");
+        
+        int totalErrors = 0;
+        for (int i = 0; i < errorTypes.length; i++) {
+            if (errorCounts[i] > 0) {
+                preview.append(String.format("  • %-35s %3d\n", errorTypes[i] + ":", errorCounts[i]));
+                totalErrors += errorCounts[i];
+            }
+        }
+        
+        if (totalErrors == 0) {
+            preview.append("  ✓ No errors found - Clean validation!\n");
+        } else {
+            preview.append(String.format("\n  TOTAL ERRORS: %d\n", totalErrors));
+        }
+        
+        // Comments
+        String comments = validatorCommentsArea.getText().trim();
+        if (!comments.isEmpty()) {
+            preview.append("\n───────────────────────────────────────────────────────\n");
+            preview.append("                VALIDATOR COMMENTS\n");
+            preview.append("───────────────────────────────────────────────────────\n\n");
+            preview.append(comments).append("\n");
+        }
+        
+        preview.append("\n═══════════════════════════════════════════════════════\n");
+        
+        // Validation Decision (will be set when button is clicked)
+        if (lastValidationStatus != null) {
+            preview.append("\nDecision: ").append(lastValidationStatus).append("\n");
+        }
+        
+        previewTextArea.setText(preview.toString());
+        previewTextArea.setCaretPosition(0); // Scroll to top
+    }
+    
+    /**
+     * Show enhanced confirmation dialog before submitting validation.
+     * v3.0 - Rich dialog with context and summary.
+     * 
+     * @param validationStatus "Validated" or "Rejected"
+     * @return true if user confirmed, false if cancelled
+     */
+    private boolean showConfirmationDialog(String validationStatus) {
+        // Build confirmation message with rich context
+        StringBuilder message = new StringBuilder();
+        
+        String mapper = (String) mapperUsernameComboBox.getSelectedItem();
+        String dateString = getDateStringFromPicker();
+        String totalBuildings = totalBuildingsField.getText().trim();
+        
+        // Count total errors
+        int totalErrors = 0;
+        for (int count : errorCounts) {
+            totalErrors += count;
+        }
+        
+        // Header based on action
+        if ("Validated".equals(validationStatus)) {
+            message.append("✓ Confirm Validation Acceptance\n");
+            message.append("═══════════════════════════════════════════\n\n");
+            message.append("You are about to ACCEPT this validation:\n\n");
+        } else {
+            message.append("✗ Confirm Validation Rejection\n");
+            message.append("═══════════════════════════════════════════\n\n");
+            message.append("You are about to REJECT this validation:\n\n");
+        }
+        
+        // Summary
+        message.append("  • Mapper:           ").append(mapper != null ? mapper : "(not selected)").append("\n");
+        message.append("  • Date:             ").append(dateString != null ? dateString : "(not specified)").append("\n");
+        message.append("  • Total Buildings:  ").append(totalBuildings).append("\n");
+        message.append("  • Total Errors:     ").append(totalErrors).append("\n\n");
+        
+        // Error breakdown if there are errors
+        if (totalErrors > 0) {
+            message.append("Error Breakdown:\n");
+            for (int i = 0; i < errorTypes.length; i++) {
+                if (errorCounts[i] > 0) {
+                    message.append("  • ").append(errorTypes[i]).append(": ").append(errorCounts[i]).append("\n");
+                }
+            }
+            message.append("\n");
+        }
+        
+        // What will happen next
+        message.append("───────────────────────────────────────────\n");
+        message.append("This will:\n");
+        message.append("  1. Submit validation to DPW Manager\n");
+        
+        if ("Validated".equals(validationStatus)) {
+            message.append("  2. Prompt you to export the validated data\n");
+            message.append("  3. Prepare JOSM for the next task\n");
+        } else {
+            message.append("  2. Log the rejection for review\n");
+            message.append("  3. Reset the form for next validation\n");
+        }
+        
+        message.append("\n Do you want to continue?");
+        
+        // Show custom dialog with OK/Cancel
+        int result = JOptionPane.showConfirmDialog(
+            null,
+            message.toString(),
+            "Confirm " + validationStatus,
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.QUESTION_MESSAGE
+        );
+        
+        return result == JOptionPane.OK_OPTION;
+    }
+    
+    /**
+     * Fetch user_id from DPW API by OSM username.
+     * v3.0.1 - Needed for cloud upload integration.
+     * 
+     * @param osmUsername The OSM username to look up
+     * @return user_id or -1 if not found
+     */
+    private int getUserIdByOsmUsername(String osmUsername) {
+        if (osmUsername == null || osmUsername.trim().isEmpty()) {
+            return -1;
+        }
+        
+        try {
+            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
+            String encodedUsername = URLEncoder.encode(osmUsername, StandardCharsets.UTF_8.toString());
+            String apiUrl = baseUrl + "/api/users?osm_username=" + encodedUsername + "&exclude_managers=true";
+            
+            Logging.debug("DPWValidationTool: Fetching user_id for: " + osmUsername);
+            
+            URL url = new URI(apiUrl).toURL();
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(10000);
+            
+            int responseCode = conn.getResponseCode();
+            
+            // Read response
+            StringBuilder response = new StringBuilder();
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                    responseCode >= 400 ? conn.getErrorStream() : conn.getInputStream(),
+                    StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    response.append(line);
+                }
+            }
+            
+            String responseBody = response.toString();
+            
+            if (responseCode == 200) {
+                // Parse user_id from response
+                // Expected: {"success":true,"data":[{"user_id":45,"osm_username":"john_mapper",...}]}
+                Pattern userIdPattern = Pattern.compile("\"user_id\"\\s*:\\s*(\\d+)");
+                Matcher matcher = userIdPattern.matcher(responseBody);
+                
+                if (matcher.find()) {
+                    int userId = Integer.parseInt(matcher.group(1));
+                    Logging.info("DPWValidationTool: Found user_id=" + userId + " for " + osmUsername);
+                    return userId;
+                } else {
+                    Logging.warn("DPWValidationTool: No user_id found in response for " + osmUsername);
+                    return -1;
+                }
+            } else {
+                Logging.error("DPWValidationTool: Failed to fetch user_id: HTTP " + responseCode);
+                return -1;
+            }
+            
+        } catch (Exception ex) {
+            Logging.error("DPWValidationTool: Error fetching user_id: " + ex.getMessage());
+            Logging.error(ex);
+            return -1;
+        }
+    }
+    
+    /**
+     * Upload OSM file to cloud storage via DPW API.
+     * v3.0.1 - Cloud integration for validated data backup.
+     * 
+     * @param file The OSM file to upload
+     * @param validationLogId The log_id from validation submission
+     * @param mapperUserId Database user_id of the mapper
+     * @param validatorUserId Database user_id of the validator
+     * @param taskId Optional task identifier
+     * @param settlement Optional settlement name
+     * @return Google Drive URL if successful, null otherwise
+     */
+    private String uploadToCloud(java.io.File file, int validationLogId, int mapperUserId, 
+                                   int validatorUserId, String taskId, String settlement) {
+        try {
+            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
+            String apiUrl = baseUrl + "/api/osm-uploads";
+            
+            Logging.info("DPWValidationTool: Uploading to cloud: " + file.getName());
+            
+            URL url = new URI(apiUrl).toURL();
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(30000); // 30 seconds for upload
+            conn.setReadTimeout(30000);
+            
+            // Create multipart boundary
+            String boundary = "----DPWValidationToolBoundary" + System.currentTimeMillis();
+            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+            
+            try (OutputStream out = conn.getOutputStream();
+                 java.io.PrintWriter writer = new java.io.PrintWriter(
+                     new java.io.OutputStreamWriter(out, StandardCharsets.UTF_8), true)) {
+                
+                // Add file field
+                writer.append("--").append(boundary).append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"file\"; filename=\"")
+                      .append(file.getName()).append("\"\r\n");
+                writer.append("Content-Type: application/xml\r\n\r\n");
+                writer.flush();
+                
+                // Write file content
+                java.nio.file.Files.copy(file.toPath(), out);
+                out.flush();
+                writer.append("\r\n");
+                
+                // Add validation_log_id
+                writer.append("--").append(boundary).append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"validation_log_id\"\r\n\r\n");
+                writer.append(String.valueOf(validationLogId)).append("\r\n");
+                
+                // Add mapper_user_id
+                writer.append("--").append(boundary).append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"mapper_user_id\"\r\n\r\n");
+                writer.append(String.valueOf(mapperUserId)).append("\r\n");
+                
+                // Add validator_user_id
+                writer.append("--").append(boundary).append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"validator_user_id\"\r\n\r\n");
+                writer.append(String.valueOf(validatorUserId)).append("\r\n");
+                
+                // Add uploaded_by_user_id (same as validator)
+                writer.append("--").append(boundary).append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"uploaded_by_user_id\"\r\n\r\n");
+                writer.append(String.valueOf(validatorUserId)).append("\r\n");
+                
+                // Add optional task_id
+                if (taskId != null && !taskId.trim().isEmpty()) {
+                    writer.append("--").append(boundary).append("\r\n");
+                    writer.append("Content-Disposition: form-data; name=\"task_id\"\r\n\r\n");
+                    writer.append(taskId).append("\r\n");
+                }
+                
+                // Add optional settlement
+                if (settlement != null && !settlement.trim().isEmpty()) {
+                    writer.append("--").append(boundary).append("\r\n");
+                    writer.append("Content-Disposition: form-data; name=\"settlement\"\r\n\r\n");
+                    writer.append(settlement).append("\r\n");
+                }
+                
+                // End multipart
+                writer.append("--").append(boundary).append("--\r\n");
+                writer.flush();
+            }
+            
+            int responseCode = conn.getResponseCode();
+            
+            // Read response
+            StringBuilder response = new StringBuilder();
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                    responseCode >= 400 ? conn.getErrorStream() : conn.getInputStream(),
+                    StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    response.append(line);
+                }
+            }
+            
+            String responseBody = response.toString();
+            Logging.debug("DPWValidationTool: Upload response: " + responseBody);
+            
+            if (responseCode == 200) {
+                // Parse drive_file_url from response
+                Pattern urlPattern = Pattern.compile("\"drive_file_url\"\\s*:\\s*\"([^\"]+)\"");
+                Matcher matcher = urlPattern.matcher(responseBody);
+                
+                if (matcher.find()) {
+                    String driveUrl = matcher.group(1);
+                    Logging.info("DPWValidationTool: Upload successful, Drive URL: " + driveUrl);
+                    return driveUrl;
+                } else {
+                    Logging.warn("DPWValidationTool: Upload successful but no drive_file_url in response");
+                    return null;
+                }
+            } else {
+                String errorMsg = extractErrorMessage(responseBody);
+                Logging.error("DPWValidationTool: Upload failed: HTTP " + responseCode + " - " + errorMsg);
+                return null;
+            }
+            
+        } catch (Exception ex) {
+            Logging.error("DPWValidationTool: Upload exception: " + ex.getMessage());
+            Logging.error(ex);
+            return null;
+        }
+    }
+    
+    /**
+     * Show export dialog after successful validation acceptance.
+     * v3.0 - Auto-prompt to export validated layer.
+     */
+    private void showExportDialog() {
+        StringBuilder message = new StringBuilder();
+        message.append("📦 Export Validated Layer\n");
+        message.append("═══════════════════════════════════════════\n\n");
+        message.append("Validation accepted successfully!\n\n");
+        message.append("Would you like to export the validated layer now?\n\n");
+        message.append("The export will save ONLY the isolated validated\n");
+        message.append("data for this mapper and date.\n\n");
+        message.append("Export now or skip this step?");
+        
+        String[] options = {"📤 Export Now", "Skip"};
+        int result = JOptionPane.showOptionDialog(
+            null,
+            message.toString(),
+            "Export Validated Layer",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            options,
+            options[0]
+        );
+        
+        if (result == 0) { // Export Now
+            performExport();
+        } else {
+            // User skipped export, ask if they want to reset
+            int choice = JOptionPane.showConfirmDialog(null,
+                "Would you like to start a new validation session?",
+                "Start New Session?",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+            
+            if (choice == JOptionPane.YES_OPTION) {
+                resetValidationSession();
+            }
+        }
+    }
+    
+    /**
+     * Perform the export of the isolated validated layer.
+     * v3.0 - Exports with progress indication and handles errors.
+     */
+    private void performExport() {
+        new Thread(() -> {
+            try {
+                // Validate isolated layer still exists
+                if (isolatedLayer == null) {
+                    SwingUtilities.invokeLater(() -> 
+                        JOptionPane.showMessageDialog(null,
+                            "Error: Isolated layer not found.\n\n" +
+                            "The validation layer may have been closed.\n" +
+                            "Please isolate the work again before exporting.",
+                            "Cannot Export",
+                            JOptionPane.ERROR_MESSAGE));
+                    return;
+                }
+                
+                // Check if layer is still in layer manager
+                boolean layerExists = false;
+                for (org.openstreetmap.josm.gui.layer.Layer layer : MainApplication.getLayerManager().getLayers()) {
+                    if (layer == isolatedLayer) {
+                        layerExists = true;
+                        break;
+                    }
+                }
+                
+                if (!layerExists) {
+                    SwingUtilities.invokeLater(() -> 
+                        JOptionPane.showMessageDialog(null,
+                            "Error: Isolated layer has been closed.\n\n" +
+                            "Please isolate the work again before exporting.",
+                            "Layer Closed",
+                            JOptionPane.ERROR_MESSAGE));
+                    isolatedLayer = null;
+                    return;
+                }
+                
+                // Generate filename
+                String taskId = taskIdField.getText().trim();
+                String mapper = (String) mapperUsernameComboBox.getSelectedItem();
+                if (mapper == null) mapper = "";
+                String dateString = getDateStringFromPicker();
+                String filename = String.format("Task_%s_%s_%s.osm", 
+                    taskId.isEmpty() ? "unknown" : taskId, 
+                    mapper, 
+                    dateString != null ? dateString : "unknown");
+                
+                // Show file chooser on EDT
+                SwingUtilities.invokeLater(() -> {
+                    JFileChooser chooser = new JFileChooser();
+                    chooser.setDialogTitle("Export Validated Layer");
+                    chooser.setSelectedFile(new java.io.File(filename));
+                    
+                    int res = chooser.showSaveDialog(MainApplication.getMainFrame());
+                    if (res != JFileChooser.APPROVE_OPTION) {
+                        // User cancelled, ask if they want to retry or skip
+                        int retry = JOptionPane.showConfirmDialog(null,
+                            "Export cancelled. Would you like to try again?",
+                            "Export Cancelled",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.QUESTION_MESSAGE);
+                        
+                        if (retry == JOptionPane.YES_OPTION) {
+                            performExport(); // Retry
+                        }
+                        return;
+                    }
+                    
+                    java.io.File file = chooser.getSelectedFile();
+                    
+                    // Perform export in background thread
+                    new Thread(() -> {
+                        try {
+                            // Show progress dialog
+                            JDialog progressDialog = new JDialog(MainApplication.getMainFrame(), "Exporting...", false);
+                            JPanel progressPanel = new JPanel(new BorderLayout(8,8));
+                            progressPanel.setBorder(BorderFactory.createEmptyBorder(16,16,16,16));
+                            JLabel progressLabel = new JLabel("Exporting validated layer...");
+                            JProgressBar progressBar = new JProgressBar();
+                            progressBar.setIndeterminate(true);
+                            progressPanel.add(progressLabel, BorderLayout.NORTH);
+                            progressPanel.add(progressBar, BorderLayout.CENTER);
+                            progressDialog.getContentPane().add(progressPanel);
+                            progressDialog.pack();
+                            progressDialog.setLocationRelativeTo(MainApplication.getMainFrame());
+                            progressDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+                            
+                            SwingUtilities.invokeLater(() -> progressDialog.setVisible(true));
+                            
+                            // Write DataSet to file
+                            try (java.io.PrintWriter pw = new java.io.PrintWriter(
+                                    new java.io.OutputStreamWriter(
+                                        new java.io.FileOutputStream(file), 
+                                        java.nio.charset.StandardCharsets.UTF_8))) {
+                                OsmWriter w = OsmWriterFactory.createOsmWriter(pw, true, 
+                                    org.openstreetmap.josm.io.OsmWriter.DEFAULT_API_VERSION);
+                                w.write(isolatedLayer.getDataSet());
+                                pw.flush();
+                            }
+                            
+                            Logging.info("DPWValidationTool: Export successful: " + file.getAbsolutePath());
+                            
+                            // v3.0.1 - Upload to cloud if we have validation log data
+                            String driveUrl = null;
+                            if (lastValidationLogId > 0) {
+                                SwingUtilities.invokeLater(() -> {
+                                    progressLabel.setText("Uploading to cloud storage...");
+                                });
+                                
+                                // Fetch user IDs from API
+                                String mapperOsmUsername = (String) mapperUsernameComboBox.getSelectedItem();
+                                
+                                UserIdentityManager userManager = UserIdentityManager.getInstance();
+                                String validatorOsmUsername = userManager.getUserName();
+                                
+                                int mapperId = -1;
+                                int validatorId = -1;
+                                
+                                if (mapperOsmUsername != null && !mapperOsmUsername.trim().isEmpty()) {
+                                    mapperId = getUserIdByOsmUsername(mapperOsmUsername.trim());
+                                }
+                                
+                                if (validatorOsmUsername != null && !validatorOsmUsername.trim().isEmpty()) {
+                                    validatorId = getUserIdByOsmUsername(validatorOsmUsername.trim());
+                                }
+                                
+                                // Upload to cloud
+                                if (mapperId > 0 && validatorId > 0) {
+                                    String settlement = settlementField.getText().trim();
+                                    driveUrl = uploadToCloud(file, lastValidationLogId, mapperId, 
+                                                             validatorId, taskId, settlement);
+                                    
+                                    if (driveUrl != null) {
+                                        googleDriveFileUrl = driveUrl;
+                                        Logging.info("DPWValidationTool: Cloud upload successful");
+                                    } else {
+                                        Logging.warn("DPWValidationTool: Cloud upload failed, continuing...");
+                                    }
+                                } else {
+                                    Logging.warn("DPWValidationTool: Could not fetch user IDs for upload. " +
+                                               "Mapper ID: " + mapperId + ", Validator ID: " + validatorId);
+                                }
+                            } else {
+                                Logging.info("DPWValidationTool: No validation log ID, skipping cloud upload");
+                            }
+                            
+                            final String finalDriveUrl = driveUrl;
+                            SwingUtilities.invokeLater(() -> progressDialog.dispose());
+                            
+                            // Update state
+                            currentState = ValidationState.EXPORTED;
+                            
+                            // Show success message (Drive URL hidden - company property)
+                            SwingUtilities.invokeLater(() -> {
+                                String message = "✓ Export Successful!\n\n" +
+                                                "File saved to:\n" + file.getAbsolutePath();
+                                
+                                // v3.0.1 - Cloud upload happens silently, Drive URL not shown to validators
+                                if (finalDriveUrl != null) {
+                                    message += "\n\n✓ Backed up to cloud storage";
+                                } else if (lastValidationLogId > 0) {
+                                    message += "\n\n⚠ Cloud backup failed\n" +
+                                              "Local file saved successfully.";
+                                }
+                                
+                                JOptionPane.showMessageDialog(null,
+                                    message,
+                                    "Export Complete",
+                                    JOptionPane.INFORMATION_MESSAGE);
+                                
+                                showRestartDialog(file.getName());
+                            });
+                            
+                            Logging.info("DPWValidationTool: Export workflow complete");
+                            
+                        } catch (Exception ex) {
+                            Logging.error("DPWValidationTool: Export failed: " + ex.getMessage());
+                            Logging.error(ex);
+                            
+                            SwingUtilities.invokeLater(() -> {
+                                JOptionPane.showMessageDialog(null,
+                                    "Export Failed\n\n" +
+                                    "Error: " + ex.getMessage() + "\n\n" +
+                                    "Please try again or contact support.",
+                                    "Export Error",
+                                    JOptionPane.ERROR_MESSAGE);
+                            });
+                        }
+                    }).start();
+                });
+                
+            } catch (Exception ex) {
+                Logging.error("DPWValidationTool: Export preparation failed: " + ex.getMessage());
+                Logging.error(ex);
+                
+                SwingUtilities.invokeLater(() ->
+                    JOptionPane.showMessageDialog(null,
+                        "Failed to prepare export: " + ex.getMessage(),
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE));
+            }
+        }).start();
+    }
+    
+    /**
+     * Show dialog prompting user to reset session after export.
+     * v3.0 - Helps prevent data duplication by clearing all layers.
+     * 
+     * @param exportedFileName The name of the file that was exported
+     */
+    private void showRestartDialog(String exportedFileName) {
+        StringBuilder message = new StringBuilder();
+        message.append("🔄 Ready for Next Task\n");
+        message.append("═══════════════════════════════════════════\n\n");
+        message.append("✓ Validation submitted successfully\n");
+        message.append("✓ Data exported to: ").append(exportedFileName).append("\n\n");
+        message.append("To prevent data duplication and prepare for your\n");
+        message.append("next validation task, we recommend resetting the\n");
+        message.append("session now. This will:\n\n");
+        message.append("  • Clear all JOSM layers\n");
+        message.append("  • Reset the validation form\n");
+        message.append("  • Prepare for the next validation\n\n");
+        message.append("What would you like to do?\n\n");
+        message.append("⚠️  Continuing without reset may cause layer\n");
+        message.append("   confusion in future validations.");
+        
+        String[] options = {"🔄 Reset Session", "📝 Continue Working"};
+        int result = JOptionPane.showOptionDialog(
+            null,
+            message.toString(),
+            "Reset Session",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            options,
+            options[0]
+        );
+        
+        if (result == 0) { // Reset Session
+            resetSession();
+        } else {
+            // Continue working - just reset the form
+            int choice = JOptionPane.showConfirmDialog(null,
+                "Would you like to reset the form for a new validation?",
+                "Reset Form?",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+            
+            if (choice == JOptionPane.YES_OPTION) {
+                resetValidationSession();
+            }
+        }
+    }
+    
+    /**
+     * Reset the entire session by clearing all layers and resetting the form.
+     * v3.0 - Provides clean slate for next validation task without restarting JOSM.
+     */
+    private void resetSession() {
+        try {
+            Logging.info("DPWValidationTool: User requested session reset");
+            
+            // Store dialog visibility state before clearing layers
+            boolean wasVisible = isDialogShowing();
+            
+            // Get layer manager
+            org.openstreetmap.josm.gui.layer.LayerManager layerManager = MainApplication.getLayerManager();
+            
+            // Get all layers and remove them
+            java.util.List<org.openstreetmap.josm.gui.layer.Layer> allLayers = new java.util.ArrayList<>(layerManager.getLayers());
+            
+            if (allLayers.isEmpty()) {
+                Logging.info("DPWValidationTool: No layers to remove");
+            } else {
+                Logging.info("DPWValidationTool: Removing " + allLayers.size() + " layers");
+                
+                // Show progress for large number of layers
+                if (allLayers.size() > 5) {
+                    SwingUtilities.invokeLater(() -> {
+                        JDialog progressDialog = new JDialog(MainApplication.getMainFrame(), "Resetting Session...", false);
+                        JPanel progressPanel = new JPanel(new BorderLayout(8,8));
+                        progressPanel.setBorder(BorderFactory.createEmptyBorder(16,16,16,16));
+                        JLabel progressLabel = new JLabel("Clearing all layers...");
+                        JProgressBar progressBar = new JProgressBar();
+                        progressBar.setIndeterminate(true);
+                        progressPanel.add(progressLabel, BorderLayout.NORTH);
+                        progressPanel.add(progressBar, BorderLayout.CENTER);
+                        progressDialog.getContentPane().add(progressPanel);
+                        progressDialog.pack();
+                        progressDialog.setLocationRelativeTo(MainApplication.getMainFrame());
+                        progressDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+                        progressDialog.setVisible(true);
+                        
+                        // Remove layers in background
+                        new Thread(() -> {
+                            try {
+                                for (org.openstreetmap.josm.gui.layer.Layer layer : allLayers) {
+                                    try {
+                                        layerManager.removeLayer(layer);
+                                        Thread.sleep(50); // Small delay to avoid overwhelming UI
+                                    } catch (Exception e) {
+                                        Logging.warn("DPWValidationTool: Could not remove layer: " + e.getMessage());
+                                    }
+                                }
+                                
+                                SwingUtilities.invokeLater(() -> {
+                                    progressDialog.dispose();
+                                    
+                                    // Reset the form
+                                    resetValidationSession();
+                                    
+                                    // Ensure dialog stays visible and functional after layer removal
+                                    ensureDialogVisible(wasVisible);
+                                    
+                                    // Show success message
+                                    JOptionPane.showMessageDialog(null,
+                                        "✓ Session Reset Complete!\n\n" +
+                                        "All layers have been cleared.\n" +
+                                        "The form has been reset.\n\n" +
+                                        "You're ready for the next validation task.",
+                                        "Session Reset",
+                                        JOptionPane.INFORMATION_MESSAGE);
+                                    
+                                    Logging.info("DPWValidationTool: Session reset completed successfully");
+                                });
+                            } catch (Exception ex) {
+                                Logging.error("DPWValidationTool: Error during session reset: " + ex.getMessage());
+                                SwingUtilities.invokeLater(() -> {
+                                    progressDialog.dispose();
+                                    JOptionPane.showMessageDialog(null,
+                                        "Session reset completed with some errors.\n\n" +
+                                        "Some layers may not have been removed.\n" +
+                                        "Please check the layer list.",
+                                        "Reset Warning",
+                                        JOptionPane.WARNING_MESSAGE);
+                                });
+                            }
+                        }).start();
+                    });
+                } else {
+                    // Quick reset for few layers
+                    for (org.openstreetmap.josm.gui.layer.Layer layer : allLayers) {
+                        try {
+                            layerManager.removeLayer(layer);
+                        } catch (Exception e) {
+                            Logging.warn("DPWValidationTool: Could not remove layer: " + e.getMessage());
+                        }
+                    }
+                    
+                    // Reset the form
+                    resetValidationSession();
+                    
+                    // Ensure dialog stays visible and functional after layer removal
+                    ensureDialogVisible(wasVisible);
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(null,
+                            "✓ Session Reset Complete!\n\n" +
+                            "All layers have been cleared.\n" +
+                            "The form has been reset.\n\n" +
+                            "You're ready for the next validation task.",
+                            "Session Reset",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    });
+                    
+                    Logging.info("DPWValidationTool: Session reset completed successfully");
+                }
+            }
+            
+        } catch (Exception ex) {
+            Logging.error("DPWValidationTool: Failed to reset session: " + ex.getMessage());
+            Logging.error(ex);
+            
+            SwingUtilities.invokeLater(() -> {
+                JOptionPane.showMessageDialog(null,
+                    "Failed to reset session automatically.\n\n" +
+                    "Error: " + ex.getMessage() + "\n\n" +
+                    "Please manually:\n" +
+                    "1. Remove all layers from the Layers panel\n" +
+                    "2. Click 'Reset Form' below to clear the form\n\n" +
+                    "Or restart JOSM for a clean state.",
+                    "Reset Failed",
+                    JOptionPane.ERROR_MESSAGE);
+                
+                // Still try to reset the form
+                int choice = JOptionPane.showConfirmDialog(null,
+                    "Would you like to reset the form anyway?",
+                    "Reset Form?",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+                
+                if (choice == JOptionPane.YES_OPTION) {
+                    resetValidationSession();
+                }
+            });
+        }
+    }
+    
+    /**
+     * Ensure the dialog stays visible and functional after session reset.
+     * v3.0.1 - Fix for plugin becoming unresponsive after clearing all layers.
+     * 
+     * @param wasVisible whether the dialog was visible before reset
+     */
+    private void ensureDialogVisible(boolean wasVisible) {
+        try {
+            // Force dialog to stay registered and visible
+            if (wasVisible) {
+                // Make sure the dialog is shown
+                if (!isDialogShowing()) {
+                    showDialog();
+                }
+                
+                // Repaint to ensure UI is responsive
+                revalidate();
+                repaint();
+                
+                Logging.info("DPWValidationTool: Dialog visibility restored");
+            }
+        } catch (Exception e) {
+            Logging.warn("DPWValidationTool: Could not restore dialog visibility: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Validate all input fields before submission.
+     * Checks field lengths, formats, and required values.
+     * 
+     * @return true if all inputs are valid, false otherwise (shows error dialog)
+     */
+    private boolean validateInputs() {
+        // Task ID validation (optional but if provided, must be reasonable)
+        String taskId = taskIdField.getText().trim();
+        if (!taskId.isEmpty() && taskId.length() > 100) {
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                "Task ID is too long. Maximum length is 100 characters.\n\nCurrent length: " + taskId.length(),
+                "Invalid Input",
+                JOptionPane.ERROR_MESSAGE));
+            return false;
+        }
+        
+        // Settlement validation (optional but if provided, must be reasonable)
+        String settlement = settlementField.getText().trim();
+        if (!settlement.isEmpty() && settlement.length() > 255) {
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                "Settlement name is too long. Maximum length is 255 characters.\n\nCurrent length: " + settlement.length(),
+                "Invalid Input",
+                JOptionPane.ERROR_MESSAGE));
+            return false;
+        }
+        
+        // Mapper username validation (required)
+        String mapper = (String) mapperUsernameComboBox.getSelectedItem();
+        if (mapper == null || mapper.trim().isEmpty()) {
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                "Please select a mapper username from the dropdown.",
+                "Invalid Input",
+                JOptionPane.ERROR_MESSAGE));
+            return false;
+        }
+        if (mapper.length() > 255) {
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                "Mapper username is too long. Maximum length is 255 characters.",
+                "Invalid Input",
+                JOptionPane.ERROR_MESSAGE));
+            return false;
+        }
+        
+        // Comments validation (optional but if provided, must not exceed limit)
+        String comments = validatorCommentsArea.getText().trim();
+        if (!comments.isEmpty() && comments.length() > 1000) {
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                "Validator comments are too long. Maximum length is 1000 characters.\n\nCurrent length: " + comments.length(),
+                "Invalid Input",
+                JOptionPane.ERROR_MESSAGE));
+            return false;
+        }
+        
+        // Total buildings validation (required, must be non-negative integer)
+        String totalBuildingsStr = totalBuildingsField.getText().trim();
+        try {
+            int totalBuildings = Integer.parseInt(totalBuildingsStr);
+            if (totalBuildings < 0) {
+                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                    "Total buildings must be a positive number or zero.\n\nCurrent value: " + totalBuildings,
+                    "Invalid Input",
+                    JOptionPane.ERROR_MESSAGE));
+                return false;
+            }
+        } catch (NumberFormatException e) {
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                "Total buildings must be a valid number.\n\nCurrent value: \"" + totalBuildingsStr + "\"",
+                "Invalid Input",
+                JOptionPane.ERROR_MESSAGE));
+            return false;
+        }
+        
+        // Error counts validation (all must be non-negative integers)
+        for (int i = 0; i < errorCounts.length; i++) {
+            if (errorCounts[i] < 0) {
+                final int index = i;
+                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                    "Error count for \"" + errorTypes[index] + "\" cannot be negative.\n\nCurrent value: " + errorCounts[index],
+                    "Invalid Input",
+                    JOptionPane.ERROR_MESSAGE));
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * Get the current JOSM user's OSM username from OAuth identity.
+     * This replaces the old basic auth method and prevents disconnection warnings.
+     * 
+     * @return The current user's OSM username, or null if not authenticated
+     */
+    private String getCurrentValidator() {
+        try {
+            UserIdentityManager userManager = UserIdentityManager.getInstance();
+            
+            // Check authentication status
+            if (userManager.isAnonymous()) {
+                Logging.info("DPWValidationTool: User is anonymous (not authenticated)");
+                return null;
+            }
+            
+            String username = userManager.getUserName();
+            if (username == null || username.trim().isEmpty()) {
+                Logging.warn("DPWValidationTool: UserIdentityManager returned null/empty username");
+                return null;
+            }
+            
+            Logging.info("DPWValidationTool: Current validator: " + username);
+            return username.trim();
+            
+        } catch (Exception e) {
+            Logging.error("DPWValidationTool: Error getting current validator: " + e.getMessage());
+            Logging.error(e);
+            return null;
+        }
+    }
 
     private void submitData(String validationStatus) {
-        // Validator pre-flight checks - get current OSM username from JOSM preferences
-        String validatorUsername = Preferences.main().get("osm-server.username", "").trim();
+        // Validate all inputs before proceeding
+        if (!validateInputs()) {
+            return; // validateInputs() shows error dialog
+        }
+        
+        // v3.0 - Store validation status for later use
+        lastValidationStatus = validationStatus;
+        
+        // Get current OSM username from JOSM OAuth identity (not basic auth)
+        String validatorUsername = getCurrentValidator();
         if (validatorUsername == null || validatorUsername.trim().isEmpty()) {
             SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
-                    "Submission Failed: Cannot identify the current user. Please set your OSM username in JOSM's Connection Settings (Preferences > Connection Settings).",
-                    "Submission Failed", JOptionPane.ERROR_MESSAGE));
+                    "Submission Failed: Cannot identify the current user.\n\n" +
+                    "Please authenticate with OpenStreetMap in JOSM:\n" +
+                    "1. Go to Edit → Preferences → Connection Settings\n" +
+                    "2. Click 'Authorize now' to authenticate with OSM\n" +
+                    "3. Complete the OAuth authorization process\n\n" +
+                    "This plugin uses JOSM's OAuth 2.0 authentication.",
+                    "Authentication Required", JOptionPane.ERROR_MESSAGE));
             return;
         }
 
@@ -932,9 +2316,18 @@ public class ValidationToolPanel extends ToggleDialog {
                         "Submission Failed", JOptionPane.ERROR_MESSAGE));
                 return;
             }
-            if (!authorizedMappers.contains(validatorUsername)) {
+            // Case-insensitive username check (OSM usernames may have different casing)
+            boolean validatorAuthorized = authorizedMappers.stream()
+                .anyMatch(user -> user.equalsIgnoreCase(validatorUsername));
+            
+            if (!validatorAuthorized) {
                 SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
-                        "Submission Failed: Your username ('" + validatorUsername + "') is not registered as a validator for this project. Please contact the project manager.",
+                        "Submission Failed: Your username ('" + validatorUsername + "') is not registered as a validator for this project.\n\n" +
+                        "Please ensure:\n" +
+                        "1. You are registered in the DPW Manager system\n" +
+                        "2. Your account status is 'Active'\n" +
+                        "3. Your OSM username matches exactly (contact project manager if needed)\n\n" +
+                        "Click 'Refresh Mapper List' to reload the authorized users.",
                         "Submission Failed", JOptionPane.ERROR_MESSAGE));
                 return;
             }
@@ -950,14 +2343,20 @@ public class ValidationToolPanel extends ToggleDialog {
         if (mapperUsername == null) {
             mapperUsername = "";
         }
+        final String finalMapperUsername = mapperUsername; // Make effectively final for lambda
         
-        // Client-side authorization check: ensure mapper is in authorized list
+        // Client-side authorization check: ensure mapper is in authorized list (case-insensitive)
         synchronized (authorizedMappers) {
-            if (!authorizedMappers.isEmpty() && !authorizedMappers.contains(mapperUsername)) {
-                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
-                    "Error: The selected mapper is not a registered participant in this project. Please select a valid user or refresh the mapper list.",
-                    "Unauthorized Mapper", JOptionPane.ERROR_MESSAGE));
-                return;
+            if (!authorizedMappers.isEmpty()) {
+                boolean mapperAuthorized = authorizedMappers.stream()
+                    .anyMatch(user -> user.equalsIgnoreCase(finalMapperUsername));
+                
+                if (!mapperAuthorized) {
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                        "Error: The selected mapper is not a registered participant in this project. Please select a valid user or refresh the mapper list.",
+                        "Unauthorized Mapper", JOptionPane.ERROR_MESSAGE));
+                    return;
+                }
             }
         }
         
@@ -988,7 +2387,7 @@ public class ValidationToolPanel extends ToggleDialog {
         }
         
         // Required fields (per API spec)
-        jsonBuilder.append("\"mapper_osm_username\": \"").append(jsonEscape(mapperUsername)).append("\",")
+        jsonBuilder.append("\"mapper_osm_username\": \"").append(jsonEscape(finalMapperUsername)).append("\",")
             .append("\"validator_osm_username\": \"").append(jsonEscape(validatorUsername)).append("\",")
             .append("\"total_buildings\": ").append(totalBuildingsInt).append(",");
 
@@ -1012,13 +2411,13 @@ public class ValidationToolPanel extends ToggleDialog {
 
     /**
      * Send validation data to the DPW Manager API (/api/validation-log endpoint).
-     * Implements v2.0 API specification with proper JSON response parsing and error handling.
+     * Implements v2.1 API specification with proper JSON response parsing and error handling.
      */
     private void sendPostRequest(String jsonData) {
         new Thread(() -> {
             setSending(true);
             
-            // v2.0: Use Vercel-hosted DPW Manager API
+            // v2.1: Use Vercel-hosted DPW Manager API
             String baseUrl = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
             String apiUrl = baseUrl + "/api/validation-log";
             
@@ -1077,6 +2476,15 @@ public class ValidationToolPanel extends ToggleDialog {
                         String validatorName = validatorNameMatcher.find() ? validatorNameMatcher.group(1) : "";
                         
                         submittedThisSession = true;
+                        currentState = ValidationState.SUBMITTED; // v3.0 - Update state
+                        
+                        // v3.0.1 - Store log_id for cloud upload
+                        try {
+                            lastValidationLogId = Integer.parseInt(logId);
+                        } catch (NumberFormatException nfe) {
+                            Logging.warn("DPWValidationTool: Could not parse log_id: " + logId);
+                            lastValidationLogId = -1;
+                        }
                         
                         SwingUtilities.invokeLater(() -> {
                             String successMsg = "✓ Validation log created successfully!\n\n" +
@@ -1086,6 +2494,23 @@ public class ValidationToolPanel extends ToggleDialog {
                                 "Data has been recorded in the DPW Manager system.";
                             JOptionPane.showMessageDialog(null, successMsg, "Submission Successful", 
                                 JOptionPane.INFORMATION_MESSAGE);
+                            
+                            // v3.0 - Show export dialog for Validated submissions only
+                            if ("Validated".equals(lastValidationStatus)) {
+                                showExportDialog();
+                            } else {
+                                // For rejected submissions, just ask to reset
+                                int choice = JOptionPane.showConfirmDialog(null,
+                                    "Would you like to start a new validation session?\n\n" +
+                                    "This will clear the form and allow you to validate another task.",
+                                    "Start New Session?",
+                                    JOptionPane.YES_NO_OPTION,
+                                    JOptionPane.QUESTION_MESSAGE);
+                                
+                                if (choice == JOptionPane.YES_OPTION) {
+                                    resetValidationSession();
+                                }
+                            }
                         });
                         
                         Logging.info("DPWValidationTool: Submission successful. Log ID: " + logId);

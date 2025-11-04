@@ -5,7 +5,8 @@
 
     <!-- Properties -->
     <property name="plugin.name" value="DPWValidationTool"/>
-    <property name="plugin.version" value="2.0.0"/>
+    <property name="plugin.version" value="3.0.1"/>
+    <property name="plugin.main.version" value="18823"/>
     <property name="plugin.main.class" value="org.openstreetmap.josm.plugins.dpwvalidationtool.DPWValidationToolPlugin"/>
     
     <property name="src.dir" location="src"/>
@@ -44,10 +45,10 @@
                 <attribute name="Plugin-Class" value="${plugin.main.class}"/>
                 <attribute name="Plugin-Version" value="${plugin.version}"/>
                 <attribute name="Plugin-Name" value="DPW Validation Tool"/>
-                <attribute name="Plugin-Main-Version" value="${plugin.version}"/>
-                <attribute name="Plugin-Description" value="DPW Validation Tool v2.0 - Quality assurance and validation data submission to DPW Manager API"/>
+                <attribute name="Plugin-Main-Version" value="${plugin.main.version}"/>
+                <attribute name="Plugin-Description" value="DPW Validation Tool v3.0.1 - Quality assurance and validation with OAuth 2.0, cloud storage integration, and session management"/>
                 <attribute name="Plugin-Author" value="Spatial Collective Ltd"/>
-                <attribute name="Plugin-Link" value="https://github.com/your-repo-here"/>
+                <attribute name="Plugin-Link" value="https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin"/>
             </manifest>
         </jar>
     </target>
