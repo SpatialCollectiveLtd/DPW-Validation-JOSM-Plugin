@@ -1,7 +1,0 @@
-Plugin-Class: org.openstreetmap.josm.plugins.dpwvalidationtool.DPWValidationToolPlugin
-Plugin-Version: 3.0.1
-Plugin-Name: DPW Validation Tool
-Plugin-Main-Version: 18823
-Plugin-Description: A plugin for DPW validation workflow with cloud storage integration
-Plugin-Author: Spatial Collective Ltd
-Plugin-Link: https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin

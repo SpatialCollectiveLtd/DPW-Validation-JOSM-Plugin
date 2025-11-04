@@ -1,11 +1,36 @@
 # Build outputs
 /build/
+/build*/
 /dist/
+
+# Build files
+build.xml
+josm-tested.jar
+manifest.txt
+sources.txt
 
 # IDE
 .vscode/
 *.class
 *.log
+
+# Temp files
+tmp_extract/
+tools/
+META-INF/
+*.err
+
+# Documentation (internal)
+*_INTEGRATION.md
+*_FIX.md
+*_UPDATE.md
+*_CHECKLIST.md
+*_PLAN.md
+*_SUMMARY.md
+*_GUIDE.md
+*_INSTRUCTIONS.md
+DEPLOYMENT_*.md
+COMPATIBILITY.md
 
 # OS
 Thumbs.db

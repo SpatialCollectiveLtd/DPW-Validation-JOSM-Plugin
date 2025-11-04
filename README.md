@@ -1,195 +1,387 @@
-![Build](https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/actions/workflows/ci.yml/badge.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Release](https://img.shields.io/github/v/release/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin)
+# DPW Validation Tool for JOSM![Build](https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/actions/workflows/ci.yml/badge.svg)
 
-# DPW Validation Tool for JOSM
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
+A JOSM plugin for streamlined quality assurance and validation workflow for the Digital Public Works Settlement Digitization project.![Release](https://img.shields.io/github/v/release/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin)
+
+
+
+**Current Version**: 3.0.1  # DPW Validation Tool for JOSM
+
+**Release Date**: November 4, 2025
 
 The DPW (Digital Public Works) Validation Tool is a specialized plugin for the Java OpenStreetMap Editor (JOSM). Developed for the 2025 Digital Public Works project, this tool streamlines the quality assurance and validation workflow for the Settlement Digitization module.
 
+---
+
 **Version 3.0.1** introduces cloud storage integration with automated Google Drive upload, along with the revolutionary streamlined workflow with automated export, validation preview panel, and enhanced confirmation dialogs.
+
+## Features
 
 It provides Final Validators with a secure, efficient, and integrated environment to assess the work of youth mappers, log quality metrics, and produce clean data deliverables — all directly inside JOSM with automatic cloud backup.
 
----
+- **OAuth 2.0 Authentication** - Automatic validator detection using JOSM credentials
 
-## Table of Contents
+- **Automated Work Isolation** - Isolate specific mapper's work for validation---
 
-- [What's New in v3.0.1](#whats-new-in-v301)
+- **Quality Assurance Panel** - Track 10 error types with validation comments
+
+- **Automated Export** - One-click export of validated data## Table of Contents
+
+- **Cloud Backup** - Automatic secure backup to project storage
+
+- **Session Management** - Quick reset between validation tasks- [What's New in v3.0.1](#whats-new-in-v301)
+
 - [What's New in v3.0](#whats-new-in-v30)
-- [What's New in v2.1](#whats-new-in-v21)
+
+---- [What's New in v2.1](#whats-new-in-v21)
+
 - [Key Features](#key-features)
-- [The Validation Workflow (Validator)](#the-validation-workflow-validator)
+
+## Requirements- [The Validation Workflow (Validator)](#the-validation-workflow-validator)
+
 - [Authentication & Authorization](#authentication--authorization)
-- [Migration from v2.1 to v3.0](#migration-from-v21-to-v30)
-- [Installation (Interactive)](#installation-interactive)
-- [Development & Build](#development--build)
-- [Design Notes & UX](#design-notes--ux)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
+
+| Requirement | Minimum Version |- [Migration from v2.1 to v3.0](#migration-from-v21-to-v30)
+
+|------------|----------------|- [Installation (Interactive)](#installation-interactive)
+
+| JOSM | Build 18823 (June 2024 or later) |- [Development & Build](#development--build)
+
+| Java | 21.0 or higher |- [Design Notes & UX](#design-notes--ux)
+
+| Internet | Required for API access |- [Troubleshooting](#troubleshooting)
+
+| Operating System | Windows 10+, Linux, macOS |- [Contributing](#contributing)
+
 - [Changelog (Selected)](#changelog-selected)
-- [License & Ownership](#license--ownership)
 
----
+---- [License & Ownership](#license--ownership)
 
-## What's New in v3.0.1
 
-### ☁️ Cloud Storage Integration
+
+## Installation---
+
+
+
+### Step 1: Download Plugin## What's New in v3.0.1
+
+
+
+Download the latest `DPWValidationTool.jar` from the [Releases](https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases) page.### ☁️ Cloud Storage Integration
+
 - **Automatic Google Drive upload**: Validated OSM files are automatically uploaded to project cloud storage
-- **Seamless backup**: After local export, files are uploaded in the background with progress indication
+
+### Step 2: Install in JOSM- **Seamless backup**: After local export, files are uploaded in the background with progress indication
+
 - **Secure access**: Drive URLs are kept internal (company property), not displayed to validators
-- **User tracking**: Mapper and validator IDs are automatically fetched and linked to uploads
-- **Graceful fallback**: If cloud upload fails, local file is still saved successfully
-- **API integration**: Fully integrated with DPW Manager API for centralized data management
+
+**Windows:**- **User tracking**: Mapper and validator IDs are automatically fetched and linked to uploads
+
+```- **Graceful fallback**: If cloud upload fails, local file is still saved successfully
+
+Copy DPWValidationTool.jar to: %APPDATA%\JOSM\plugins\- **API integration**: Fully integrated with DPW Manager API for centralized data management
+
+```
 
 ### 🎯 Enhanced Upload Progress
-- **Real-time status**: Progress dialog updates from "Exporting..." to "Uploading to cloud storage..."
-- **Clear feedback**: Success messages confirm cloud backup without exposing internal Drive URLs
-- **Error handling**: Informative messages if upload fails with local backup confirmation
+
+**Linux:**- **Real-time status**: Progress dialog updates from "Exporting..." to "Uploading to cloud storage..."
+
+```- **Clear feedback**: Success messages confirm cloud backup without exposing internal Drive URLs
+
+Copy DPWValidationTool.jar to: ~/.config/JOSM/plugins/- **Error handling**: Informative messages if upload fails with local backup confirmation
+
+```
 
 ---
 
-## What's New in v3.0
+**macOS:**
 
-### 🚀 Streamlined Automated Workflow
+```## What's New in v3.0
+
+Copy DPWValidationTool.jar to: ~/Library/JOSM/plugins/
+
+```### 🚀 Streamlined Automated Workflow
+
 - **Automatic export prompts**: After accepting validation, you're automatically prompted to export
-- **No manual export button needed**: Export is seamlessly integrated into the workflow
+
+### Step 3: Restart JOSM- **No manual export button needed**: Export is seamlessly integrated into the workflow
+
 - **Smart session reset**: Option to clear all layers after export to prevent data duplication
-- **State-based workflow**: Plugin tracks your progress and guides you through each step
+
+Close and reopen JOSM for the plugin to load.- **State-based workflow**: Plugin tracks your progress and guides you through each step
+
 - **Lightweight reset**: No need to restart JOSM - just clear layers and continue
 
+### Step 4: Open Plugin
+
 ### 📊 Validation Preview Panel
-- **Collapsible summary panel**: See complete validation summary before submitting
+
+Go to **Windows** → **DPW Validation Tool** to open the panel.- **Collapsible summary panel**: See complete validation summary before submitting
+
 - **Error breakdown display**: Visual breakdown of all error types and counts
-- **Clear decision preview**: Review mapper, date, buildings, and comments at a glance
+
+---- **Clear decision preview**: Review mapper, date, buildings, and comments at a glance
+
 - **Professional formatting**: Easy-to-read summary with clear sections
 
+## Quick Start
+
 ### ✅ Enhanced Confirmation Dialogs
-- **Rich context dialogs**: See exactly what you're submitting before confirming
-- **Error summaries**: View total errors and breakdown in confirmation
-- **Next-step preview**: Know what happens after you click Accept or Reject
+
+### 1. Authenticate- **Rich context dialogs**: See exactly what you're submitting before confirming
+
+- Make sure you're logged into JOSM (Edit → Preferences → Connection Settings)- **Error summaries**: View total errors and breakdown in confirmation
+
+- Your OSM account must be authorized in the DPW project- **Next-step preview**: Know what happens after you click Accept or Reject
+
 - **Professional UX**: Clean, informative dialogs that reduce mistakes
 
-### 🎯 Workflow Status Indicator
-- **Visual progress tracking**: Status bar shows current step in the workflow
-- **Color-coded states**: Different colors for each workflow stage
-- **Clear next steps**: Always know what to do next
-- **Real-time updates**: Status changes as you progress through validation
+### 2. Select Task
 
-### 🛡️ Comprehensive Error Handling
+- Choose validation date (required)### 🎯 Workflow Status Indicator
+
+- Select mapper from dropdown- **Visual progress tracking**: Status bar shows current step in the workflow
+
+- Enter Task ID- **Color-coded states**: Different colors for each workflow stage
+
+- **Clear next steps**: Always know what to do next
+
+### 3. Isolate Work- **Real-time updates**: Status changes as you progress through validation
+
+- Click **Isolate** to load mapper's work
+
+- Review buildings in the isolated layer### 🛡️ Comprehensive Error Handling
+
 - **Layer validation**: Checks if isolated layer exists before export
-- **Graceful failures**: Clear error messages with recovery options
-- **Retry mechanisms**: Option to retry failed operations
-- **State consistency**: Plugin maintains consistent state even after errors
+
+### 4. Validate- **Graceful failures**: Clear error messages with recovery options
+
+- Count errors using +/- buttons- **Retry mechanisms**: Option to retry failed operations
+
+- Add validation comments- **State consistency**: Plugin maintains consistent state even after errors
+
+- Click **Accept** (if valid) or **Reject** (if invalid)
 
 ---
 
-## What's New in v2.1
+### 5. Export (for Accepted work)
 
-### 🔐 OAuth 2.0 Authentication
+- Choose where to save the file## What's New in v2.1
+
+- File is automatically backed up to cloud
+
+- Click **Reset Session** to start next validation### 🔐 OAuth 2.0 Authentication
+
 - **Automatic user detection**: Plugin now uses JOSM's OAuth 2.0 identity to automatically detect the validator
-- **No more disconnection warnings**: Fixes JOSM disconnection errors by properly integrating with OAuth
+
+---- **No more disconnection warnings**: Fixes JOSM disconnection errors by properly integrating with OAuth
+
 - **Seamless authentication**: No manual username entry required
 
+## Validation Workflow
+
 ### 🛡️ Enhanced Security
-- **Mandatory date selection**: Users must select a date before isolating work to ensure data integrity
-- **Authorization checks**: Only authorized project members can isolate and validate data
-- **Automatic authorization**: Validates current user against project registry before allowing operations
+
+```- **Mandatory date selection**: Users must select a date before isolating work to ensure data integrity
+
+Select Date & Mapper → Isolate Work → Review Quality → - **Authorization checks**: Only authorized project members can isolate and validate data
+
+Submit Decision → Export Data → Reset Session → Repeat- **Automatic authorization**: Validates current user against project registry before allowing operations
+
+```
 
 ### ⚡ Simplified Workflow
-- **Removed unnecessary buttons**: Eliminated "Scan Layers" and "Force Submit" buttons
+
+**No JOSM restarts needed** - the plugin handles session management automatically.- **Removed unnecessary buttons**: Eliminated "Scan Layers" and "Force Submit" buttons
+
 - **Streamlined UI**: Clean, intuitive interface with Accept, Reject, Isolate, and Export buttons
-- **Session management**: Option to reset and start new validation session after submission
 
-### 🎯 Improved Data Validation
+---- **Session management**: Option to reset and start new validation session after submission
+
+
+
+## Error Types Tracked### 🎯 Improved Data Validation
+
 - **Robust JSON parsing**: Better handling of special characters and unicode in API responses
-- **Input validation**: Comprehensive checks on field lengths and formats before submission
-- **Better error messages**: Clear, actionable error messages with step-by-step instructions
 
----
+1. Hanging Nodes- **Input validation**: Comprehensive checks on field lengths and formats before submission
 
-## Key Features
+2. Overlapping Buildings- **Better error messages**: Clear, actionable error messages with step-by-step instructions
 
-- **Secure User Authentication**: Fetches the project's central user registry so only authorized validators and mappers are used for tasks.
-- **Automated Work Isolation**: Copy a single mapper's contributions into a clean JOSM layer for unbiased review.
-- **Integrated QA Panel**: Side panel to select mapper, log counts for 10 error classes with +/- controls, add validator comments, and mark Accept/Reject.
+3. Buildings Crossing Highway
+
+4. Missing Tags---
+
+5. Improper Tags
+
+6. Features Misidentified## Key Features
+
+7. Missing Buildings
+
+8. Building Inside Building- **Secure User Authentication**: Fetches the project's central user registry so only authorized validators and mappers are used for tasks.
+
+9. Building Crossing Residential- **Automated Work Isolation**: Copy a single mapper's contributions into a clean JOSM layer for unbiased review.
+
+10. Improperly Drawn- **Integrated QA Panel**: Side panel to select mapper, log counts for 10 error classes with +/- controls, add validator comments, and mark Accept/Reject.
+
 - **Direct Submission**: Send validation reports (error counts, metadata) directly to the project's Google Sheet endpoint.
-- **One-Click Deliverable Export**: Export cleaned data with a project-compliant filename: `Task_<taskId>_<mapper>_<YYYY-MM-DD>.osm`.
+
+---- **One-Click Deliverable Export**: Export cleaned data with a project-compliant filename: `Task_<taskId>_<mapper>_<YYYY-MM-DD>.osm`.
+
 - **Cloud Storage Integration**: Automatic backup to secure company cloud storage (internal use only) for centralized data management.
 
+## Troubleshooting
+
 ---
+
+### Plugin Not Loading?
 
 ## The Validation Workflow (Validator)
 
-**Note:** v3.0 introduces an automated, guided workflow with visual progress tracking.
+**Check JOSM Version:**
 
-### Prerequisites
+- Help → About**Note:** v3.0 introduces an automated, guided workflow with visual progress tracking.
+
+- Version must be 18823 or higher
+
+- Update JOSM if needed: [josm.openstreetmap.de](https://josm.openstreetmap.de/)### Prerequisites
+
 1. **JOSM Authentication**: Be logged in to JOSM with your OSM account (OAuth 2.0)
-2. **Project Authorization**: Your OSM username must be registered in the DPW Manager project registry
-3. **API Access**: Valid connection to the DPW Manager API
 
-### Workflow Steps
+**Check Plugin Location:**2. **Project Authorization**: Your OSM username must be registered in the DPW Manager project registry
 
-**1. Select Date & Mapper**
-- **Status**: "▶ Current Step: Select Date & Mapper"
-- Choose the date of the work you want to validate (REQUIRED)
-- Select the mapper from the dropdown
+- Windows: `%APPDATA%\JOSM\plugins\DPWValidationTool.jar`3. **API Access**: Valid connection to the DPW Manager API
+
+- Linux: `~/.config/JOSM/plugins/DPWValidationTool.jar`
+
+- macOS: `~/Library/JOSM/plugins/DPWValidationTool.jar`### Workflow Steps
+
+
+
+**Check Logs:****1. Select Date & Mapper**
+
+- Help → Show Log- **Status**: "▶ Current Step: Select Date & Mapper"
+
+- Search for "DPWValidationTool"- Choose the date of the work you want to validate (REQUIRED)
+
+- Look for error messages- Select the mapper from the dropdown
+
 - The settlement field auto-fills based on the mapper
-- **Purpose**: Date selection ensures you only see work from that specific day
 
-**2. Isolate Work**
+### Plugin Becomes Unresponsive?- **Purpose**: Date selection ensures you only see work from that specific day
+
+
+
+Restart JOSM once. The plugin automatically maintains state during normal operation.**2. Isolate Work**
+
 - **Status**: Still "▶ Current Step: Select Date & Mapper"
-- Click **"Isolate"** to fetch data for the selected date and mapper
+
+### Cannot Submit Validation?- Click **"Isolate"** to fetch data for the selected date and mapper
+
 - Plugin creates a temporary validation layer with only that mapper's work
-- **Result**: Clean, isolated view of just the buildings to validate
-- **Status changes to**: "▶ Current Step: Validate & Submit"
-- **Validation Summary Panel appears**: Collapsible panel showing preview of validation
 
-**3. Review & Validate**
+- Ensure you're connected to the internet- **Result**: Clean, isolated view of just the buildings to validate
+
+- Check you're logged into JOSM with OAuth- **Status changes to**: "▶ Current Step: Validate & Submit"
+
+- Verify your OSM account is authorized in the DPW project- **Validation Summary Panel appears**: Collapsible panel showing preview of validation
+
+
+
+---**3. Review & Validate**
+
 - **Status**: "▶ Current Step: Validate & Submit"
-- Review each building visually in JOSM
-- Use JOSM's validation tools to check quality
-- Count and categorize errors using the +/- buttons
-- Enter comments about the validation
-- **Validation Preview**: Expand summary panel to see complete breakdown
 
-**4. Submit Decision**
+## Support- Review each building visually in JOSM
+
+- Use JOSM's validation tools to check quality
+
+For issues or questions:- Count and categorize errors using the +/- buttons
+
+- **GitHub Issues**: [Report a bug](https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/issues)- Enter comments about the validation
+
+- **Documentation**: See this README- **Validation Preview**: Expand summary panel to see complete breakdown
+
+
+
+---**4. Submit Decision**
+
 - **Status**: Still "▶ Current Step: Validate & Submit"
-- Click **"Accept"** if work meets quality standards
+
+## Version History- Click **"Accept"** if work meets quality standards
+
   - Enhanced confirmation dialog shows summary
-  - Includes: mapper, date, buildings, error breakdown
-  - Shows what will happen next
-- Click **"Reject"** if major issues exist
-  - Similar confirmation dialog with different context
-  - Explains next steps for rejection
+
+### v3.0.1 (November 4, 2025)  - Includes: mapper, date, buildings, error breakdown
+
+- Fixed plugin compatibility with JOSM  - Shows what will happen next
+
+- Added cloud storage integration- Click **"Reject"** if major issues exist
+
+- Fixed plugin visibility after session reset  - Similar confirmation dialog with different context
+
+- Improved stability and performance  - Explains next steps for rejection
+
 - **Status changes to**: "✓ Submitted - Exporting..."
 
-**5. Export Data (Accept Only)**
-- **Automatic prompt appears**: "Export validated layer now?"
-- Options: **"📤 Export Now"** or **"Skip"**
-- If you choose "Export Now":
+### v3.0.0 (October 24, 2025)
+
+- Automated export workflow**5. Export Data (Accept Only)**
+
+- Session reset functionality- **Automatic prompt appears**: "Export validated layer now?"
+
+- Validation preview panel- Options: **"📤 Export Now"** or **"Skip"**
+
+- Enhanced confirmation dialogs- If you choose "Export Now":
+
   - File chooser opens with pre-filled filename: `Task_[ID]_[Mapper]_[Date].osm`
-  - Progress dialog shows "Exporting validated layer..."
-  - Only the isolated validation layer is exported
-  - **Progress updates to**: "Uploading to cloud storage..."
-  - File is automatically backed up to cloud (internal use only)
+
+### v2.1.0 (October 23, 2025)  - Progress dialog shows "Exporting validated layer..."
+
+- OAuth 2.0 authentication  - Only the isolated validation layer is exported
+
+- Enhanced security features  - **Progress updates to**: "Uploading to cloud storage..."
+
+- Improved user interface  - File is automatically backed up to cloud (internal use only)
+
   - Success message shows:
-    - Local file path
+
+---    - Local file path
+
     - "✓ Backed up to cloud storage" (if successful)
-  - If upload fails, local file is still saved
+
+## License  - If upload fails, local file is still saved
+
 - **Status changes to**: "✓ Complete - Ready to Restart"
 
+MIT License - See [LICENSE](LICENSE) file for details.
+
 **6. Reset Session (After Export)**
-- **Automatic prompt appears**: "Ready for Next Task"
+
+---- **Automatic prompt appears**: "Ready for Next Task"
+
 - Shows confirmation: ✓ Validation submitted, ✓ Data exported, ☁️ Backed up to cloud
-- Options: **"🔄 Reset Session"** or **"📝 Continue Working"**
+
+## Project Information- Options: **"🔄 Reset Session"** or **"📝 Continue Working"**
+
 - **Why reset?**: 
-  - Clears all JOSM layers automatically
-  - Resets the validation form
-  - Prepares for next validation
+
+**Developer**: Spatial Collective Ltd    - Clears all JOSM layers automatically
+
+**Project**: Digital Public Works - Settlement Digitization    - Resets the validation form
+
+**Repository**: https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin  - Prepares for next validation
+
   - Much faster than restarting JOSM
-  - No need to wait for JOSM to restart
+
+---  - No need to wait for JOSM to restart
+
 - If you choose "Reset Session":
-  - All layers are removed automatically
+
+**Ready to validate? Install the plugin and start improving OSM data quality!** 🗺️  - All layers are removed automatically
+
   - Form is cleared and reset
   - Ready for next task immediately
 - If you skip reset, option to reset form only

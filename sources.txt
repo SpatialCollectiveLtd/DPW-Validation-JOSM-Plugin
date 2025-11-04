@@ -1,2 +1,0 @@
-C:\Users\TECH\Desktop\DPW JOSM Plugin\src\org\openstreetmap\josm\plugins\dpwvalidationtool\DPWValidationToolPlugin.java
-C:\Users\TECH\Desktop\DPW JOSM Plugin\src\org\openstreetmap\josm\plugins\dpwvalidationtool\ValidationToolPanel.java
