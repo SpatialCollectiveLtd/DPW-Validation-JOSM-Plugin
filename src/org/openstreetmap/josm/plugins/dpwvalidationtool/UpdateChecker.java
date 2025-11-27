@@ -114,6 +114,18 @@ public class UpdateChecker {
         String releaseNotes = extractJsonStringField(latestRelease, "body");
         String downloadUrl = extractDownloadUrl(latestRelease);
         
+        // Debug logging
+        Logging.info("UpdateChecker: Latest version from GitHub: " + latestVersion);
+        Logging.info("UpdateChecker: Download URL extracted: " + (downloadUrl != null ? downloadUrl : "NULL - NOT FOUND!"));
+        
+        if (downloadUrl == null) {
+            Logging.error("UpdateChecker: Failed to extract download URL from release JSON");
+            Logging.error("UpdateChecker: Release JSON length: " + latestRelease.length() + " chars");
+            // Log first 500 chars for debugging
+            Logging.error("UpdateChecker: Release JSON preview: " + 
+                latestRelease.substring(0, Math.min(500, latestRelease.length())));
+        }
+        
         boolean updateAvailable = isNewerVersion(latestVersion, CURRENT_VERSION);
         
         return new UpdateInfo(
@@ -274,11 +286,17 @@ public class UpdateChecker {
      * Download and install the update automatically
      */
     private static void installUpdate(UpdateInfo info) {
+        Logging.info("UpdateChecker: installUpdate called");
+        Logging.info("UpdateChecker: Download URL: " + info.downloadUrl);
+        Logging.info("UpdateChecker: Latest version: " + info.latestVersion);
+        
         if (info.downloadUrl == null || info.downloadUrl.isEmpty()) {
+            Logging.error("UpdateChecker: Download URL is null or empty!");
             JOptionPane.showMessageDialog(
                 null,
                 "<html><b>Download URL not found</b><br><br>" +
-                "Please download manually from GitHub releases.</html>",
+                "The GitHub release may not have a JAR file attached.<br>" +
+                "Please download manually from GitHub.</html>",
                 "Update Failed",
                 JOptionPane.ERROR_MESSAGE
             );
@@ -336,11 +354,18 @@ public class UpdateChecker {
                 conn.setReadTimeout(30000);
                 
                 int responseCode = conn.getResponseCode();
+                Logging.info("UpdateChecker: Download response code: " + responseCode);
+                
                 if (responseCode != 200) {
                     throw new Exception("Download failed with HTTP status: " + responseCode);
                 }
                 
                 long fileSize = conn.getContentLengthLong();
+                Logging.info("UpdateChecker: File size from server: " + fileSize + " bytes");
+                
+                if (fileSize <= 0) {
+                    Logging.warn("UpdateChecker: Server did not provide content length, will download without progress");
+                }
                 
                 try (InputStream in = conn.getInputStream();
                      FileOutputStream out = new FileOutputStream(tempFile.toFile())) {
@@ -353,21 +378,33 @@ public class UpdateChecker {
                         out.write(buffer, 0, bytesRead);
                         downloaded += bytesRead;
                         
+                        final long currentDownloaded = downloaded;
+                        
                         if (fileSize > 0) {
                             final int progress = (int) ((downloaded * 100) / fileSize);
-                            final long downloadedMB = downloaded / (1024 * 1024);
-                            final long totalMB = fileSize / (1024 * 1024);
+                            final long downloadedKB = downloaded / 1024;
+                            final long totalKB = fileSize / 1024;
                             
                             SwingUtilities.invokeLater(() -> {
                                 progressBar.setValue(progress);
-                                progressBar.setString(String.format("Downloading... %d MB / %d MB (%d%%)", 
-                                    downloadedMB, totalMB, progress));
+                                progressBar.setString(String.format("Downloading... %d KB / %d KB (%d%%)", 
+                                    downloadedKB, totalKB, progress));
+                            });
+                        } else {
+                            // No content length, show bytes downloaded
+                            final long downloadedKB = downloaded / 1024;
+                            SwingUtilities.invokeLater(() -> {
+                                progressBar.setIndeterminate(true);
+                                progressBar.setString(String.format("Downloading... %d KB", downloadedKB));
                             });
                         }
                     }
+                    
+                    Logging.info("UpdateChecker: Download complete. Total bytes: " + downloaded);
                 }
                 
                 if (cancelled[0]) {
+                    Logging.info("UpdateChecker: Download cancelled by user");
                     Files.deleteIfExists(tempFile);
                     SwingUtilities.invokeLater(progressDialog::dispose);
                     return;
