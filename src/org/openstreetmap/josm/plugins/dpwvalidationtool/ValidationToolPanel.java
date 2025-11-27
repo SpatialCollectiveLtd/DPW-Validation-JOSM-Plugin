@@ -967,6 +967,7 @@ public class ValidationToolPanel extends ToggleDialog {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Accept", "application/json");
+        conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.1.0-BETA (JOSM Validation Tool)");
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(10000);
 
