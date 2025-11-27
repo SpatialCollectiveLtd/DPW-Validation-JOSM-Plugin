@@ -22,19 +22,16 @@ public class DPWValidationToolPlugin extends Plugin {
         // because internal titleBar fields are initialized later by JOSM.
         validationToolPanel = null;
 
-        // Register a Tools menu action and toolbar button to show the dialog explicitly
+        // Register a Tools menu with collapsible dropdown
         try {
-            javax.swing.AbstractAction action = new javax.swing.AbstractAction("DPW Validation Tool") {
-                {
-                    // try to set a small pirate icon programmatically
-                    try {
-                        putValue(NAME, "DPW Validation Tool");
-                        putValue(SMALL_ICON, createPirateIcon());
-                    } catch (Throwable t) {
-                        // ignore icon creation problems
-                    }
-                }
-
+            // Create main submenu for DPW Validation Tool
+            javax.swing.JMenu dpwMenu = new javax.swing.JMenu("DPW Validation Tool");
+            try {
+                dpwMenu.setIcon(createPirateIcon());
+            } catch (Throwable ignore) {}
+            
+            // 1. Open Validation Panel
+            javax.swing.AbstractAction openPanelAction = new javax.swing.AbstractAction("Open Validation Panel") {
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     try {
@@ -56,40 +53,34 @@ public class DPWValidationToolPlugin extends Plugin {
                     }
                 }
             };
-            javax.swing.JMenuItem mi = new javax.swing.JMenuItem(action);
-            MainApplication.getMenu().toolsMenu.add(mi);
-        } catch (Exception ex) {
-            Logging.warn("DPWValidationTool: failed to register menu action: " + ex);
-            Logging.trace(ex);
-        }
-
-        // Register Settings menu action
-        try {
-            javax.swing.AbstractAction settingsAction = new javax.swing.AbstractAction("DPW Validation Settings...") {
+            dpwMenu.add(new javax.swing.JMenuItem(openPanelAction));
+            
+            // Add separator
+            dpwMenu.addSeparator();
+            
+            // 2. Settings
+            javax.swing.AbstractAction settingsAction = new javax.swing.AbstractAction("Settings...") {
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     SettingsPanel.showSettingsDialog();
                 }
             };
-            javax.swing.JMenuItem settingsMi = new javax.swing.JMenuItem(settingsAction);
-            MainApplication.getMenu().toolsMenu.add(settingsMi);
-        } catch (Exception ex) {
-            Logging.warn("DPWValidationTool: failed to register settings menu action: " + ex);
-            Logging.trace(ex);
-        }
-        
-        // Register Check for Updates menu action
-        try {
-            javax.swing.AbstractAction updateAction = new javax.swing.AbstractAction("Check for DPW Plugin Updates...") {
+            dpwMenu.add(new javax.swing.JMenuItem(settingsAction));
+            
+            // 3. Check for Updates
+            javax.swing.AbstractAction updateAction = new javax.swing.AbstractAction("Check for Updates...") {
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     UpdateChecker.checkForUpdatesAsync(true);
                 }
             };
-            javax.swing.JMenuItem updateMi = new javax.swing.JMenuItem(updateAction);
-            MainApplication.getMenu().toolsMenu.add(updateMi);
+            dpwMenu.add(new javax.swing.JMenuItem(updateAction));
+            
+            // Add submenu to Tools menu
+            MainApplication.getMenu().toolsMenu.add(dpwMenu);
+            
         } catch (Exception ex) {
-            Logging.warn("DPWValidationTool: failed to register update check menu action: " + ex);
+            Logging.warn("DPWValidationTool: failed to register menu: " + ex);
             Logging.trace(ex);
         }
         

@@ -22,6 +22,8 @@ public class PluginSettings {
     private static final String REMOTE_CONTROL_DETECTION = PREFIX + "remote-control-detection";
     private static final String CACHE_TM_DATA = PREFIX + "cache-tm-data";
     private static final String PREF_CACHE_EXPIRY_HOURS = PREFIX + "cache-expiry-hours";
+    private static final String DEFAULT_PROJECT_URL = PREFIX + "default-project-url";
+    private static final String DEFAULT_PROJECT_ID = PREFIX + "default-project-id";
     
     // Default values
     private static final String DEFAULT_DPW_API_URL = "https://app.spatialcollective.com/api";
@@ -149,6 +151,36 @@ public class PluginSettings {
     }
     
     /**
+     * Get default project URL for Task Manager
+     * This is used to pre-fill the TM URL field for validators
+     */
+    public static String getDefaultProjectUrl() {
+        return Config.getPref().get(DEFAULT_PROJECT_URL, "");
+    }
+    
+    /**
+     * Set default project URL for Task Manager
+     */
+    public static void setDefaultProjectUrl(String url) {
+        Config.getPref().put(DEFAULT_PROJECT_URL, url);
+    }
+    
+    /**
+     * Get default project ID for Task Manager
+     * This is used when only project ID is known (not full URL)
+     */
+    public static String getDefaultProjectId() {
+        return Config.getPref().get(DEFAULT_PROJECT_ID, "");
+    }
+    
+    /**
+     * Set default project ID for Task Manager
+     */
+    public static void setDefaultProjectId(String projectId) {
+        Config.getPref().put(DEFAULT_PROJECT_ID, projectId);
+    }
+    
+    /**
      * Reset all settings to default values
      */
     public static void resetToDefaults() {
@@ -159,5 +191,7 @@ public class PluginSettings {
         setAutoFetchSettlementEnabled(true);
         setRemoteControlDetectionEnabled(true);
         setCacheTMDataEnabled(true);
+        setDefaultProjectUrl("");
+        setDefaultProjectId("");
     }
 }

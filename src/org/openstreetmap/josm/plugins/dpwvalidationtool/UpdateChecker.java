@@ -16,14 +16,14 @@ import java.nio.file.StandardCopyOption;
 
 /**
  * Checks for plugin updates from GitHub releases and auto-installs updates
- * @version 3.1.0-BETA
+ * @version 3.0.2
  */
 public class UpdateChecker {
     
     // Changed from /releases/latest to /releases to include pre-releases and beta versions
     private static final String GITHUB_API_URL = "https://api.github.com/repos/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
     private static final String GITHUB_RELEASES_URL = "https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
-    private static final String CURRENT_VERSION = "3.1.0-BETA";
+    private static final String CURRENT_VERSION = "3.0.2";
     
     /**
      * Check for updates in background and show notification if available
@@ -172,12 +172,11 @@ public class UpdateChecker {
      */
     private static boolean isNewerVersion(String latest, String current) {
         try {
-            // Exact match check - for beta releases, always show update notification
-            // to ensure users get the latest JAR even within same version
+            // Exact match check - versions are identical (case-insensitive)
             if (latest.equalsIgnoreCase(current)) {
-                // For BETA versions, we want to notify about JAR updates
-                // For stable versions, identical version means up to date
-                return current.toUpperCase().contains("BETA");
+                // No update needed - already on this version
+                Logging.info("UpdateChecker: Versions match (latest: " + latest + ", current: " + current + ")");
+                return false;
             }
             
             // Remove BETA/ALPHA suffixes for comparison
@@ -444,17 +443,15 @@ public class UpdateChecker {
                     );
                     
                     if (restart == JOptionPane.YES_OPTION) {
-                        // Request JOSM restart
+                        // Show message that user needs to restart manually
                         JOptionPane.showMessageDialog(
                             null,
-                            "<html><b>Please restart JOSM now</b><br><br>" +
-                            "Close JOSM and reopen it to use the updated plugin.<br><br>" +
-                            "The update has been installed successfully.</html>",
-                            "Restart Required",
+                            "<html><b>Update installed successfully!</b><br><br>" +
+                            "Please close JOSM manually and restart it to use the updated plugin.<br><br>" +
+                            "<i>Note: JOSM will NOT restart automatically. Please restart manually.</i></html>",
+                            "Restart JOSM Manually",
                             JOptionPane.INFORMATION_MESSAGE
                         );
-                        // Exit JOSM to force restart
-                        System.exit(0);
                     }
                 });
                 

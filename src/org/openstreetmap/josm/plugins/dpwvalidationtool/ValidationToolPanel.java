@@ -76,7 +76,6 @@ public class ValidationToolPanel extends ToggleDialog {
     private JLabel authStatusLabel;
     private JLabel fetchStatusLabel;
     private JButton validateButton;
-    private JButton invalidateButton;
     private JButton refreshMapperListButton;
     private javax.swing.JComponent datePickerComponent;
     private JButton isolateButton;
@@ -173,8 +172,9 @@ public class ValidationToolPanel extends ToggleDialog {
             gbc.gridy = 0;
             gbc.fill = GridBagConstraints.NONE;
             gbc.weightx = 0;
-            JLabel tmLabel = new JLabel("<html><b>TM URL (BETA):</b></html>");
-            tmLabel.setToolTipText("Optional: Tasking Manager task URL for auto-detection");
+            JLabel tmLabel = new JLabel("<html><b>TM Project URL:</b></html>");
+            tmLabel.setToolTipText("<html>Tasking Manager project URL<br>" +
+                "Enables Task ID auto-detection from remote control</html>");
             panel.add(tmLabel, gbc);
 
             gbc.gridx = 1;
@@ -182,24 +182,37 @@ public class ValidationToolPanel extends ToggleDialog {
             gbc.fill = GridBagConstraints.HORIZONTAL;
             gbc.weightx = 1.0;
             tmUrlField = new JTextField();
-            tmUrlField.setToolTipText("<html>Example: https://tasks.hotosm.org/projects/27396/tasks/123<br>Leave blank to use remote control auto-detection</html>");
+            tmUrlField.setToolTipText("<html><b>Tasking Manager Project URL</b><br>" +
+                "Example: https://tasks.hotosm.org/projects/27396<br>" +
+                "This enables Task ID auto-detection when you load tasks via remote control.<br>" +
+                "Set default URL in Tools → DPW Validation Tool Settings to avoid re-entering.</html>");
+            // Pre-fill from default project URL in settings
+            String defaultProjectUrl = PluginSettings.getDefaultProjectUrl();
+            if (defaultProjectUrl != null && !defaultProjectUrl.trim().isEmpty()) {
+                tmUrlField.setText(defaultProjectUrl.trim());
+            }
             panel.add(tmUrlField, gbc);
             
             gbc.gridy++;
         }
 
-        // Task ID
+        // Task ID - start at current gridy position (not reset to 0)
         gbc.gridx = 0;
-        gbc.gridy = 0;
+        gbc.gridwidth = 1;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        panel.add(new JLabel("Task ID:"), gbc);
+        JLabel taskIdLabel = new JLabel("Task ID:");
+        taskIdLabel.setToolTipText("<html>Individual task number (e.g., 27, 20, 24)<br>" +
+            "Auto-detected when loading via TM remote control</html>");
+        panel.add(taskIdLabel, gbc);
 
         gbc.gridx = 1;
         gbc.gridwidth = 2;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         taskIdField = new JTextField();
+        taskIdField.setToolTipText("<html><b>Auto-fills when you load a task from Tasking Manager</b><br>" +
+            "Or manually enter the task number here (e.g., 27, 20, 24)</html>");
         panel.add(taskIdField, gbc);
 
         // Settlement (optional field)
@@ -430,16 +443,18 @@ public class ValidationToolPanel extends ToggleDialog {
         
         panel.add(validationPreviewPanel, gbc);
 
-        // Action Buttons - simplified workflow
-    validateButton = new JButton("Accept");
-    validateButton.setToolTipText("Mark this task as validated (accept)");
-    invalidateButton = new JButton("Reject");
-    invalidateButton.setToolTipText("Mark this task as rejected (invalidate)");
+        // Action Button - Record validation data
+        // v3.0.2: Removed Reject button - validators record all work as "Validated"
+        // and mark incomplete tasks in HOT Tasking Manager for mapper to fix
+    validateButton = new JButton("Record Validation");
+    validateButton.setToolTipText("<html><b>Record this validation in DPW Manager</b><br>" +
+        "Logs the mapper's work with error counts and comments.<br>" +
+        "All work is recorded regardless of quality - you mark incomplete<br>" +
+        "tasks in HOT Tasking Manager for the mapper to fix later.</html>");
 
-    // Use a compact FlowLayout so buttons don't expand when the panel is narrowed
+    // Use a compact FlowLayout
     JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
     actionPanel.add(validateButton);
-    actionPanel.add(invalidateButton);
 
         gbc.gridx = 0;
         gbc.gridy++;
@@ -449,17 +464,12 @@ public class ValidationToolPanel extends ToggleDialog {
 
         createLayout(panel, false, null);
 
-        // Action Listeners
+        // Action Listener - Record validation
         validateButton.addActionListener(e -> {
-            // v3.0 - Show enhanced confirmation dialog before accepting
+            // v3.0.2 - All validations are recorded as "Validated"
+            // Validators mark incomplete tasks in HOT TM separately
             if (showConfirmationDialog("Validated")) {
                 submitData("Validated");
-            }
-        });
-        invalidateButton.addActionListener(e -> {
-            // v3.0 - Show enhanced confirmation dialog before rejecting
-            if (showConfirmationDialog("Rejected")) {
-                submitData("Rejected");
             }
         });
 
@@ -685,7 +695,6 @@ public class ValidationToolPanel extends ToggleDialog {
 
         // Disable submit buttons until Task ID is provided
         validateButton.setEnabled(false);
-        invalidateButton.setEnabled(false);
         taskIdField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             private void update() {
                 updateSubmitButtonsEnabled();
@@ -731,7 +740,6 @@ public class ValidationToolPanel extends ToggleDialog {
         isSending = sending;
         SwingUtilities.invokeLater(() -> {
             validateButton.setEnabled(!sending && !taskIdField.getText().trim().isEmpty());
-            invalidateButton.setEnabled(!sending && !taskIdField.getText().trim().isEmpty());
             refreshMapperListButton.setEnabled(!sending && !isFetchingMappers);
             if (sending) {
                 showSendingDialog();
@@ -1457,24 +1465,20 @@ public class ValidationToolPanel extends ToggleDialog {
                 case IDLE:
                     isolateButton.setEnabled(true);
                     validateButton.setEnabled(false);
-                    invalidateButton.setEnabled(false);
                     validationPreviewPanel.setVisible(false);
                     break;
                 case ISOLATED:
                     isolateButton.setEnabled(true);
                     validateButton.setEnabled(!taskIdField.getText().trim().isEmpty());
-                    invalidateButton.setEnabled(!taskIdField.getText().trim().isEmpty());
                     validationPreviewPanel.setVisible(true);
                     break;
                 case SUBMITTED:
                     isolateButton.setEnabled(false);
                     validateButton.setEnabled(false);
-                    invalidateButton.setEnabled(false);
                     break;
                 case EXPORTED:
                     isolateButton.setEnabled(false);
                     validateButton.setEnabled(false);
-                    invalidateButton.setEnabled(false);
                     break;
             }
         });
@@ -2743,7 +2747,6 @@ public class ValidationToolPanel extends ToggleDialog {
             }
             boolean enable = hasTaskId && mapperListLoaded && !isSending;
             validateButton.setEnabled(enable);
-            invalidateButton.setEnabled(enable);
         });
     }
 

@@ -19,6 +19,8 @@ public class SettingsPanel extends JDialog {
     private JCheckBox tmIntegrationCheckbox;
     private JTextField dpwApiUrlField;
     private JTextField tmApiUrlField;
+    private JTextField projectUrlField;
+    private JTextField projectIdField;
     private JCheckBox autoFetchSettlementCheckbox;
     private JCheckBox remoteControlDetectionCheckbox;
     private JSpinner cacheExpirySpinner;
@@ -73,6 +75,41 @@ public class SettingsPanel extends JDialog {
         tmExample.setForeground(Color.GRAY);
         mainPanel.add(new JLabel(""), GBC.std());
         mainPanel.add(tmExample, GBC.eol().insets(5, 0, 5, 10));
+        row++;
+        
+        // Default Project Configuration Section
+        mainPanel.add(new JLabel("<html><b>Default Project Configuration</b></html>"), 
+            GBC.eol().fill(GBC.HORIZONTAL).insets(0, 15, 0, 5));
+        row++;
+        
+        // Project URL
+        mainPanel.add(new JLabel("Default Project URL:"), GBC.std().insets(5, 5, 5, 5));
+        projectUrlField = new JTextField(40);
+        projectUrlField.setToolTipText("<html>Default TM project URL to pre-fill for validators<br>" +
+            "Example: https://tasks.hotosm.org/projects/27396<br>" +
+            "This saves validators from entering URLs repeatedly</html>");
+        mainPanel.add(projectUrlField, GBC.eol().fill(GBC.HORIZONTAL).insets(5, 5, 5, 5));
+        row++;
+        
+        JLabel projectUrlExample = new JLabel("<html><i>Example: https://tasks.hotosm.org/projects/27396</i></html>");
+        projectUrlExample.setForeground(Color.GRAY);
+        mainPanel.add(new JLabel(""), GBC.std());
+        mainPanel.add(projectUrlExample, GBC.eol().insets(5, 0, 5, 5));
+        row++;
+        
+        // OR Project ID
+        mainPanel.add(new JLabel("OR Default Project ID:"), GBC.std().insets(5, 5, 5, 5));
+        projectIdField = new JTextField(40);
+        projectIdField.setToolTipText("<html>Default TM project ID (e.g., 27396)<br>" +
+            "Used if full URL not provided<br>" +
+            "One of Project URL or Project ID should be set</html>");
+        mainPanel.add(projectIdField, GBC.eol().fill(GBC.HORIZONTAL).insets(5, 5, 5, 5));
+        row++;
+        
+        JLabel projectIdNote = new JLabel("<html><i>💡 Tip: Set either Project URL OR Project ID to avoid entering URLs for each validation</i></html>");
+        projectIdNote.setForeground(new Color(0, 100, 200));
+        mainPanel.add(new JLabel(""), GBC.std());
+        mainPanel.add(projectIdNote, GBC.eol().insets(5, 0, 5, 10));
         row++;
         
         // Feature Toggles Section
@@ -182,6 +219,8 @@ public class SettingsPanel extends JDialog {
         tmIntegrationCheckbox.setSelected(PluginSettings.isTMIntegrationEnabled());
         dpwApiUrlField.setText(PluginSettings.getDPWApiBaseUrl());
         tmApiUrlField.setText(PluginSettings.getTMApiBaseUrl());
+        projectUrlField.setText(PluginSettings.getDefaultProjectUrl());
+        projectIdField.setText(PluginSettings.getDefaultProjectId());
         autoFetchSettlementCheckbox.setSelected(PluginSettings.isAutoFetchSettlement());
         remoteControlDetectionCheckbox.setSelected(PluginSettings.isRemoteControlDetectionEnabled());
         cacheExpirySpinner.setValue(PluginSettings.getCacheExpiryHours());
@@ -191,6 +230,8 @@ public class SettingsPanel extends JDialog {
         PluginSettings.setTMIntegrationEnabled(tmIntegrationCheckbox.isSelected());
         PluginSettings.setDPWApiBaseUrl(dpwApiUrlField.getText().trim());
         PluginSettings.setTMApiBaseUrl(tmApiUrlField.getText().trim());
+        PluginSettings.setDefaultProjectUrl(projectUrlField.getText().trim());
+        PluginSettings.setDefaultProjectId(projectIdField.getText().trim());
         PluginSettings.setAutoFetchSettlement(autoFetchSettlementCheckbox.isSelected());
         PluginSettings.setRemoteControlDetectionEnabled(remoteControlDetectionCheckbox.isSelected());
         PluginSettings.setCacheExpiryHours((Integer) cacheExpirySpinner.getValue());
