@@ -82,6 +82,8 @@ public class ValidationToolPanel extends ToggleDialog {
     private JButton isolateButton;
     private volatile boolean isSending = false;
     private volatile boolean isFetchingMappers = false;
+    private volatile long lastMapperFetchTime = 0;
+    private static final long MAPPER_FETCH_COOLDOWN = 10000; // 10 seconds between fetches to prevent 429 errors
     private JDialog sendingDialog;
     private boolean submittedThisSession = false;
     
@@ -109,7 +111,7 @@ public class ValidationToolPanel extends ToggleDialog {
     };
     private int[] errorCounts = new int[errorTypes.length];
     private JLabel[] errorCountLabels = new JLabel[errorTypes.length];
-
+    
     public ValidationToolPanel() {
         super(I18n.tr("DPW Validation Tool v3.1.0-BETA"), "validator", I18n.tr("Open DPW Validation Tool"), null, 150);
         try {
@@ -125,7 +127,7 @@ public class ValidationToolPanel extends ToggleDialog {
                 });
             }
             
-            // Kick off an initial authorized-mapper fetch in background
+            // Kick off an initial authorized-mapper fetch in background with rate limiting
             new Thread(() -> {
                 try {
                     setFetchingMappers(true);
@@ -939,11 +941,20 @@ public class ValidationToolPanel extends ToggleDialog {
      * Per v2.1 API spec: ALWAYS include exclude_managers=true to prevent exposing admin accounts.
      */
     private void fetchAuthorizedMappers() throws Exception {
-        // v2.1: Use Vercel-hosted DPW Manager API with security parameter
-        String urlStr = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
+        // Rate limiting: prevent 429 Too Many Requests errors
+        long now = System.currentTimeMillis();
+        if (now - lastMapperFetchTime < MAPPER_FETCH_COOLDOWN) {
+            long waitTime = (MAPPER_FETCH_COOLDOWN - (now - lastMapperFetchTime)) / 1000;
+            Logging.info("DPWValidationTool: Skipping mapper fetch - rate limit active. Wait " + waitTime + " seconds.");
+            throw new Exception("Rate limit: Please wait " + waitTime + " seconds before refreshing");
+        }
+        lastMapperFetchTime = now;
+        
+        // Use configurable DPW API base URL (v3.1.0-BETA: from PluginSettings)
+        String apiBaseUrl = PluginSettings.getDPWApiBaseUrl();
         
         // Construct full URL with query parameters (SECURITY: exclude_managers=true is REQUIRED)
-        String fullUrl = urlStr + "/api/users?exclude_managers=true&status=Active";
+        String fullUrl = apiBaseUrl + "/users?exclude_managers=true&status=Active";
         
         // indicate fetching to the user
         SwingUtilities.invokeLater(() -> {
@@ -1001,7 +1012,7 @@ public class ValidationToolPanel extends ToggleDialog {
 
         // persist the used base URL so users don't have to set it manually
         try {
-            Preferences.main().put("dpw.api_base_url", urlStr);
+            Preferences.main().put("dpw.api_base_url", apiBaseUrl);
         } catch (Exception ignore) {
         }
 
