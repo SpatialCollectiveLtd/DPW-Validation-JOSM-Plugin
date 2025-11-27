@@ -82,6 +82,14 @@ public class ValidationToolPanel extends ToggleDialog {
     private JButton isolateButton;
     private volatile boolean isSending = false;
     private volatile boolean isFetchingMappers = false;
+    // API key for DPW Manager API (provided by DPW team - Nov 27, 2025)
+    private static final String DPW_API_KEY = "dpw_josm_plugin_digitization_2025_secure_key_f8a9b2c3d1e4";
+    
+    // User list caching (5 minutes as recommended by DPW team)
+    private static List<UserInfo> cachedUserList = null;
+    private static long cacheTimestamp = 0;
+    private static final long CACHE_DURATION = 300000; // 5 minutes (matches server Cache-Control)
+    
     private volatile long lastMapperFetchTime = 0;
     private static final long MAPPER_FETCH_COOLDOWN = 10000; // 10 seconds between fetches to prevent 429 errors
     private JDialog sendingDialog;
@@ -939,10 +947,38 @@ public class ValidationToolPanel extends ToggleDialog {
      * Fetch the authorized mapper/validator usernames from the DPW Manager API.
      * Connects to /api/users endpoint with exclude_managers=true for security.
      * Per v2.1 API spec: ALWAYS include exclude_managers=true to prevent exposing admin accounts.
+     * v3.1.0: Added API key authentication and 5-minute caching as per DPW team recommendations.
      */
     private void fetchAuthorizedMappers() throws Exception {
-        // Rate limiting: prevent 429 Too Many Requests errors
+        // Check cache first (5-minute duration as recommended by DPW team)
         long now = System.currentTimeMillis();
+        if (cachedUserList != null && (now - cacheTimestamp) < CACHE_DURATION) {
+            Logging.info("DPWValidationTool: Using cached user list (age: " + 
+                ((now - cacheTimestamp) / 1000) + "s)");
+            
+            // Use cached data
+            synchronized (authorizedMappers) {
+                authorizedMappers.clear();
+                authorizedMappers.addAll(cachedUserList.stream()
+                    .map(u -> u.osmUsername)
+                    .collect(java.util.stream.Collectors.toList()));
+            }
+            
+            synchronized (mapperSettlements) {
+                mapperSettlements.clear();
+                for (UserInfo user : cachedUserList) {
+                    mapperSettlements.put(user.osmUsername, user.settlement);
+                }
+            }
+            
+            SwingUtilities.invokeLater(() -> {
+                fetchStatusLabel.setText("User list loaded from cache");
+                fetchStatusLabel.setBackground(new Color(144, 238, 144));
+            });
+            return;
+        }
+        
+        // Rate limiting: prevent excessive API calls
         if (now - lastMapperFetchTime < MAPPER_FETCH_COOLDOWN) {
             long waitTime = (MAPPER_FETCH_COOLDOWN - (now - lastMapperFetchTime)) / 1000;
             Logging.info("DPWValidationTool: Skipping mapper fetch - rate limit active. Wait " + waitTime + " seconds.");
@@ -968,10 +1004,29 @@ public class ValidationToolPanel extends ToggleDialog {
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Accept", "application/json");
         conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.1.0-BETA (JOSM Validation Tool)");
+        conn.setRequestProperty("X-API-Key", DPW_API_KEY); // API key authentication (Nov 27, 2025)
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(10000);
 
         int rc = conn.getResponseCode();
+        
+        // Log rate limit headers (as recommended by DPW team)
+        String rateLimitRemaining = conn.getHeaderField("X-RateLimit-Remaining");
+        String rateLimitLimit = conn.getHeaderField("X-RateLimit-Limit");
+        String rateLimitReset = conn.getHeaderField("X-RateLimit-Reset");
+        
+        if (rateLimitRemaining != null && rateLimitLimit != null) {
+            Logging.info("DPWValidationTool: API rate limit: " + rateLimitRemaining + "/" + rateLimitLimit + 
+                " (resets at " + rateLimitReset + ")");
+            
+            // Warn if approaching limit
+            try {
+                int remaining = Integer.parseInt(rateLimitRemaining);
+                if (remaining < 10) {
+                    Logging.warn("DPWValidationTool: API rate limit nearly reached: " + remaining + " requests remaining");
+                }
+            } catch (NumberFormatException ignore) {}
+        }
         
         // Read response body
         StringBuilder sb = new StringBuilder();
@@ -1024,6 +1079,11 @@ public class ValidationToolPanel extends ToggleDialog {
             usernames.add(user.osmUsername);
             settlements.put(user.osmUsername, user.settlement);
         }
+
+        // Cache the user list (5 minutes as recommended by DPW team)
+        cachedUserList = new ArrayList<>(userInfoList);
+        cacheTimestamp = System.currentTimeMillis();
+        Logging.info("DPWValidationTool: Cached " + userInfoList.size() + " users for 5 minutes");
 
         // replace authorizedMappers and mapperSettlements atomically
         synchronized (authorizedMappers) {
