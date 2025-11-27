@@ -4,15 +4,18 @@ import org.openstreetmap.josm.tools.Logging;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 /**
- * Checks for plugin updates from GitHub releases
+ * Checks for plugin updates from GitHub releases and auto-installs updates
  * @version 3.1.0-BETA
  */
 public class UpdateChecker {
@@ -198,7 +201,7 @@ public class UpdateChecker {
     }
     
     /**
-     * Show update available dialog
+     * Show update available dialog with auto-install option
      */
     private static void showUpdateAvailableDialog(UpdateInfo info) {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
@@ -238,19 +241,21 @@ public class UpdateChecker {
         }
         
         // Buttons
-        Object[] options = {"Download from GitHub", "Remind Me Later"};
+        Object[] options = {"Install Update", "Download Manually", "Remind Me Later"};
         int result = JOptionPane.showOptionDialog(
             null,
             panel,
             "DPW Validation Tool - Update Available",
-            JOptionPane.YES_NO_OPTION,
+            JOptionPane.YES_NO_CANCEL_OPTION,
             JOptionPane.INFORMATION_MESSAGE,
             null,
             options,
             options[0]
         );
         
-        if (result == 0) { // Download
+        if (result == 0) { // Install Update
+            installUpdate(info);
+        } else if (result == 1) { // Download Manually
             try {
                 Desktop.getDesktop().browse(new URI(GITHUB_RELEASES_URL));
             } catch (Exception e) {
@@ -263,6 +268,176 @@ public class UpdateChecker {
                 );
             }
         }
+    }
+    
+    /**
+     * Download and install the update automatically
+     */
+    private static void installUpdate(UpdateInfo info) {
+        if (info.downloadUrl == null || info.downloadUrl.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                null,
+                "<html><b>Download URL not found</b><br><br>" +
+                "Please download manually from GitHub releases.</html>",
+                "Update Failed",
+                JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+        
+        // Show progress dialog
+        JDialog progressDialog = new JDialog((Frame) null, "Downloading Update...", true);
+        JProgressBar progressBar = new JProgressBar(0, 100);
+        progressBar.setStringPainted(true);
+        progressBar.setString("Connecting...");
+        
+        JPanel progressPanel = new JPanel(new BorderLayout(10, 10));
+        progressPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        progressPanel.add(new JLabel("<html><b>Downloading DPW Validation Tool update...</b></html>"), BorderLayout.NORTH);
+        progressPanel.add(progressBar, BorderLayout.CENTER);
+        
+        JButton cancelButton = new JButton("Cancel");
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(cancelButton);
+        progressPanel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        progressDialog.setContentPane(progressPanel);
+        progressDialog.pack();
+        progressDialog.setLocationRelativeTo(null);
+        progressDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        
+        final boolean[] cancelled = {false};
+        cancelButton.addActionListener(e -> {
+            cancelled[0] = true;
+            progressDialog.dispose();
+        });
+        
+        // Download in background thread
+        new Thread(() -> {
+            try {
+                // Get plugin directory
+                String josmHome = System.getProperty("josm.home");
+                if (josmHome == null) {
+                    josmHome = System.getProperty("user.home") + File.separator + ".josm";
+                }
+                Path pluginDir = Paths.get(josmHome, "plugins");
+                if (!Files.exists(pluginDir)) {
+                    Files.createDirectories(pluginDir);
+                }
+                
+                Path targetFile = pluginDir.resolve("DPWValidationTool.jar");
+                Path tempFile = pluginDir.resolve("DPWValidationTool.jar.tmp");
+                
+                // Download the JAR
+                URL url = new URL(info.downloadUrl);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(30000);
+                
+                int responseCode = conn.getResponseCode();
+                if (responseCode != 200) {
+                    throw new Exception("Download failed with HTTP status: " + responseCode);
+                }
+                
+                long fileSize = conn.getContentLengthLong();
+                
+                try (InputStream in = conn.getInputStream();
+                     FileOutputStream out = new FileOutputStream(tempFile.toFile())) {
+                    
+                    byte[] buffer = new byte[8192];
+                    long downloaded = 0;
+                    int bytesRead;
+                    
+                    while ((bytesRead = in.read(buffer)) != -1 && !cancelled[0]) {
+                        out.write(buffer, 0, bytesRead);
+                        downloaded += bytesRead;
+                        
+                        if (fileSize > 0) {
+                            final int progress = (int) ((downloaded * 100) / fileSize);
+                            final long downloadedMB = downloaded / (1024 * 1024);
+                            final long totalMB = fileSize / (1024 * 1024);
+                            
+                            SwingUtilities.invokeLater(() -> {
+                                progressBar.setValue(progress);
+                                progressBar.setString(String.format("Downloading... %d MB / %d MB (%d%%)", 
+                                    downloadedMB, totalMB, progress));
+                            });
+                        }
+                    }
+                }
+                
+                if (cancelled[0]) {
+                    Files.deleteIfExists(tempFile);
+                    SwingUtilities.invokeLater(progressDialog::dispose);
+                    return;
+                }
+                
+                // Replace the old JAR with the new one
+                SwingUtilities.invokeLater(() -> {
+                    progressBar.setValue(100);
+                    progressBar.setString("Installing...");
+                });
+                
+                // Backup old file
+                Path backupFile = pluginDir.resolve("DPWValidationTool.jar.bak");
+                if (Files.exists(targetFile)) {
+                    Files.move(targetFile, backupFile, StandardCopyOption.REPLACE_EXISTING);
+                }
+                
+                // Move temp file to target
+                Files.move(tempFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+                
+                // Delete backup on success
+                Files.deleteIfExists(backupFile);
+                
+                SwingUtilities.invokeLater(() -> {
+                    progressDialog.dispose();
+                    
+                    // Show success message
+                    int restart = JOptionPane.showConfirmDialog(
+                        null,
+                        "<html><b>Update installed successfully!</b><br><br>" +
+                        "DPW Validation Tool has been updated to version " + info.latestVersion + ".<br><br>" +
+                        "<b>You must restart JOSM for the changes to take effect.</b><br><br>" +
+                        "Would you like to restart JOSM now?</html>",
+                        "Update Complete",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.INFORMATION_MESSAGE
+                    );
+                    
+                    if (restart == JOptionPane.YES_OPTION) {
+                        // Request JOSM restart
+                        JOptionPane.showMessageDialog(
+                            null,
+                            "<html><b>Please restart JOSM now</b><br><br>" +
+                            "Close JOSM and reopen it to use the updated plugin.<br><br>" +
+                            "The update has been installed successfully.</html>",
+                            "Restart Required",
+                            JOptionPane.INFORMATION_MESSAGE
+                        );
+                        // Exit JOSM to force restart
+                        System.exit(0);
+                    }
+                });
+                
+            } catch (Exception e) {
+                Logging.error("Failed to install update: " + e.getMessage());
+                SwingUtilities.invokeLater(() -> {
+                    progressDialog.dispose();
+                    JOptionPane.showMessageDialog(
+                        null,
+                        "<html><b>Update installation failed</b><br><br>" +
+                        "Error: " + e.getMessage() + "<br><br>" +
+                        "Please download the update manually from GitHub.</html>",
+                        "Update Failed",
+                        JOptionPane.ERROR_MESSAGE
+                    );
+                });
+            }
+        }).start();
+        
+        progressDialog.setVisible(true);
     }
     
     /**
