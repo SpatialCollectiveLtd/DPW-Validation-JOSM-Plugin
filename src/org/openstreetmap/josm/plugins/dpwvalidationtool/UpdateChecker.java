@@ -17,7 +17,8 @@ import java.nio.charset.StandardCharsets;
  */
 public class UpdateChecker {
     
-    private static final String GITHUB_API_URL = "https://api.github.com/repos/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases/latest";
+    // Changed from /releases/latest to /releases to include pre-releases and beta versions
+    private static final String GITHUB_API_URL = "https://api.github.com/repos/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
     private static final String GITHUB_RELEASES_URL = "https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
     private static final String CURRENT_VERSION = "3.1.0-BETA";
     
@@ -63,6 +64,7 @@ public class UpdateChecker {
     
     /**
      * Check for updates synchronously
+     * Now checks ALL releases (including pre-releases and beta versions)
      */
     public static UpdateInfo checkForUpdates() throws Exception {
         URL url = new URL(GITHUB_API_URL);
@@ -88,8 +90,14 @@ public class UpdateChecker {
         
         String jsonResponse = response.toString();
         
-        // Parse JSON manually
-        String latestVersion = extractJsonStringField(jsonResponse, "tag_name");
+        // Parse JSON array of releases - find the most recent one by published_at date
+        String latestRelease = findLatestRelease(jsonResponse);
+        if (latestRelease == null || latestRelease.isEmpty()) {
+            throw new Exception("No releases found on GitHub");
+        }
+        
+        // Parse the latest release object
+        String latestVersion = extractJsonStringField(latestRelease, "tag_name");
         if (latestVersion == null) {
             throw new Exception("Could not parse version from GitHub API");
         }
@@ -99,9 +107,9 @@ public class UpdateChecker {
             latestVersion = latestVersion.substring(1);
         }
         
-        String releaseName = extractJsonStringField(jsonResponse, "name");
-        String releaseNotes = extractJsonStringField(jsonResponse, "body");
-        String downloadUrl = extractDownloadUrl(jsonResponse);
+        String releaseName = extractJsonStringField(latestRelease, "name");
+        String releaseNotes = extractJsonStringField(latestRelease, "body");
+        String downloadUrl = extractDownloadUrl(latestRelease);
         
         boolean updateAvailable = isNewerVersion(latestVersion, CURRENT_VERSION);
         
@@ -116,10 +124,47 @@ public class UpdateChecker {
     }
     
     /**
+     * Find the latest release from the releases array (sorted by published_at descending)
+     * GitHub returns releases in descending order by default, so first one is latest
+     */
+    private static String findLatestRelease(String jsonArray) {
+        // The response is an array of release objects
+        // Find the first release object (most recent)
+        int firstReleaseStart = jsonArray.indexOf('{');
+        if (firstReleaseStart == -1) return null;
+        
+        // Find matching closing brace
+        int braceCount = 0;
+        int pos = firstReleaseStart;
+        while (pos < jsonArray.length()) {
+            char c = jsonArray.charAt(pos);
+            if (c == '{') braceCount++;
+            else if (c == '}') {
+                braceCount--;
+                if (braceCount == 0) {
+                    return jsonArray.substring(firstReleaseStart, pos + 1);
+                }
+            }
+            pos++;
+        }
+        return null;
+    }
+    
+    /**
      * Compare version strings
+     * Returns true if latest version is newer than current OR if versions are equal
+     * (to account for JAR updates within same version)
      */
     private static boolean isNewerVersion(String latest, String current) {
         try {
+            // Exact match check - for beta releases, always show update notification
+            // to ensure users get the latest JAR even within same version
+            if (latest.equalsIgnoreCase(current)) {
+                // For BETA versions, we want to notify about JAR updates
+                // For stable versions, identical version means up to date
+                return current.toUpperCase().contains("BETA");
+            }
+            
             // Remove BETA/ALPHA suffixes for comparison
             String latestClean = latest.replaceAll("-.*$", "");
             String currentClean = current.replaceAll("-.*$", "");
