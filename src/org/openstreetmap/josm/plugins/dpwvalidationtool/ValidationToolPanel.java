@@ -66,6 +66,7 @@ public class ValidationToolPanel extends ToggleDialog {
     }
 
     private JTextField taskIdField;
+    private JTextField tmUrlField; // v3.1.0-BETA: TM URL input
     private JTextField settlementField;
     private JComboBox<String> mapperUsernameComboBox;
     private JTextField totalBuildingsField;
@@ -110,11 +111,20 @@ public class ValidationToolPanel extends ToggleDialog {
     private JLabel[] errorCountLabels = new JLabel[errorTypes.length];
 
     public ValidationToolPanel() {
-        super(I18n.tr("DPW Validation Tool v3.0.1"), "validator", I18n.tr("Open DPW Validation Tool"), null, 150);
+        super(I18n.tr("DPW Validation Tool v3.1.0-BETA"), "validator", I18n.tr("Open DPW Validation Tool"), null, 150);
         try {
-            Logging.info("DPWValidationTool: constructing ValidationToolPanel v3.0.1");
+            Logging.info("DPWValidationTool: constructing ValidationToolPanel v3.1.0-BETA");
             setupUI();
             updatePanelData();
+            
+            // v3.1.0-BETA: Setup remote control detection listener
+            if (PluginSettings.isTMIntegrationEnabled() && 
+                PluginSettings.isRemoteControlDetectionEnabled()) {
+                MainApplication.getLayerManager().addActiveLayerChangeListener(e -> {
+                    checkRemoteControlForTMTask();
+                });
+            }
+            
             // Kick off an initial authorized-mapper fetch in background
             new Thread(() -> {
                 try {
@@ -132,7 +142,7 @@ public class ValidationToolPanel extends ToggleDialog {
                     setFetchingMappers(false);
                 }
             }).start();
-            Logging.info("DPWValidationTool: ValidationToolPanel v3.0.1 constructed");
+            Logging.info("DPWValidationTool: ValidationToolPanel v3.1.0-BETA constructed");
         } catch (Throwable t) {
             Logging.error(t);
         }
@@ -146,6 +156,27 @@ public class ValidationToolPanel extends ToggleDialog {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(2, 5, 2, 5);
         gbc.anchor = GridBagConstraints.WEST;
+
+        // v3.1.0-BETA: TM URL field (optional, only shown if TM integration enabled)
+        if (PluginSettings.isTMIntegrationEnabled()) {
+            gbc.gridx = 0;
+            gbc.gridy = 0;
+            gbc.fill = GridBagConstraints.NONE;
+            gbc.weightx = 0;
+            JLabel tmLabel = new JLabel("<html><b>TM URL (BETA):</b></html>");
+            tmLabel.setToolTipText("Optional: Tasking Manager task URL for auto-detection");
+            panel.add(tmLabel, gbc);
+
+            gbc.gridx = 1;
+            gbc.gridwidth = 2;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            gbc.weightx = 1.0;
+            tmUrlField = new JTextField();
+            tmUrlField.setToolTipText("<html>Example: https://tasks.hotosm.org/projects/27396/tasks/123<br>Leave blank to use remote control auto-detection</html>");
+            panel.add(tmUrlField, gbc);
+            
+            gbc.gridy++;
+        }
 
         // Task ID
         gbc.gridx = 0;
@@ -653,6 +684,18 @@ public class ValidationToolPanel extends ToggleDialog {
             public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
             public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
         });
+
+        // v3.1.0-BETA: TM URL auto-detection listener
+        if (PluginSettings.isTMIntegrationEnabled() && tmUrlField != null) {
+            tmUrlField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+                private void update() {
+                    handleTMUrlInput();
+                }
+                public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
+                public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
+                public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            });
+        }
 
         mapperUsernameComboBox.addItemListener(e -> updateAuthStatus());
     // when mapper selection changes, update the building count shown (mapper-specific)
@@ -2762,5 +2805,161 @@ public class ValidationToolPanel extends ToggleDialog {
             Logging.trace(e);
         }
         return null;
+    }
+
+    // ========================================================================================
+    // v3.1.0-BETA: Tasking Manager Integration Methods
+    // ========================================================================================
+
+    /**
+     * Handle TM URL input and auto-populate mapper/task information
+     */
+    private void handleTMUrlInput() {
+        if (!PluginSettings.isTMIntegrationEnabled() || tmUrlField == null) {
+            return;
+        }
+
+        String tmUrl = tmUrlField.getText().trim();
+        if (tmUrl.isEmpty()) {
+            return;
+        }
+
+        // Parse TM URL in background to avoid blocking UI
+        new Thread(() -> {
+            try {
+                TaskManagerAPIClient.TaskInfo info = TaskManagerAPIClient.fetchTaskInfoFromURL(tmUrl);
+                
+                SwingUtilities.invokeLater(() -> {
+                    if (info.success) {
+                        // Auto-fill task ID
+                        taskIdField.setText(String.valueOf(info.taskId));
+                        
+                        // Auto-select mapper if found
+                        if (info.mapperUsername != null && !info.mapperUsername.isEmpty()) {
+                            selectMapperInComboBox(info.mapperUsername);
+                            
+                            // Auto-fetch settlement if enabled
+                            if (PluginSettings.isAutoFetchSettlement()) {
+                                updateMapperSettlement();
+                            }
+                        }
+                        
+                        Logging.info("TM integration: Auto-populated from " + tmUrl);
+                    } else {
+                        Logging.warn("TM integration: " + info.errorMessage);
+                    }
+                });
+            } catch (Exception e) {
+                Logging.error("TM integration error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Check remote control for TM task information
+     * Parses changeset comments for #hotosm-project-XXXXX-task-YYY format
+     */
+    private void checkRemoteControlForTMTask() {
+        if (!PluginSettings.isTMIntegrationEnabled() || 
+            !PluginSettings.isRemoteControlDetectionEnabled()) {
+            return;
+        }
+
+        try {
+            // Get active data layer
+            OsmDataLayer layer = MainApplication.getLayerManager().getActiveDataLayer();
+            if (layer == null) {
+                return;
+            }
+
+            // Get changeset comment from layer dataset
+            DataSet ds = layer.getDataSet();
+            if (ds == null) {
+                return;
+            }
+
+            // Try to get changeset comment from layer name or associated changeset
+            // When JOSM loads via remote control, the changeset comment is often in the layer name
+            String changesetComment = layer.getName();
+            if (changesetComment == null || changesetComment.trim().isEmpty()) {
+                return;
+            }
+
+            // Parse changeset comment for TM task info
+            int[] taskInfo = TaskManagerAPIClient.parseChangesetComment(changesetComment);
+            if (taskInfo == null) {
+                return;
+            }
+
+            int projectId = taskInfo[0];
+            int taskId = taskInfo[1];
+
+            Logging.info("TM integration: Detected task from remote control - project " + projectId + " task " + taskId);
+
+            // Fetch mapper info in background
+            new Thread(() -> {
+                TaskManagerAPIClient.TaskInfo info = TaskManagerAPIClient.fetchTaskInfo(projectId, taskId);
+                
+                SwingUtilities.invokeLater(() -> {
+                    if (info.success) {
+                        // Auto-fill fields
+                        taskIdField.setText(String.valueOf(taskId));
+                        
+                        if (info.mapperUsername != null && !info.mapperUsername.isEmpty()) {
+                            selectMapperInComboBox(info.mapperUsername);
+                            
+                            if (PluginSettings.isAutoFetchSettlement()) {
+                                updateMapperSettlement();
+                            }
+                        }
+                        
+                        // Show notification
+                        JOptionPane.showMessageDialog(
+                            ValidationToolPanel.this,
+                            "<html><b>Task Manager Task Detected!</b><br>" +
+                            "Project: " + projectId + "<br>" +
+                            "Task: " + taskId + "<br>" +
+                            "Mapper: " + info.mapperUsername + "</html>",
+                            "TM Auto-Detection",
+                            JOptionPane.INFORMATION_MESSAGE
+                        );
+                        
+                        Logging.info("TM integration: Auto-populated from remote control");
+                    } else {
+                        Logging.warn("TM integration: " + info.errorMessage);
+                    }
+                });
+            }).start();
+
+        } catch (Exception e) {
+            Logging.error("TM remote control detection error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Select a mapper in the combo box by username
+     */
+    private void selectMapperInComboBox(String username) {
+        if (username == null || username.trim().isEmpty()) {
+            return;
+        }
+
+        for (int i = 0; i < mapperUsernameComboBox.getItemCount(); i++) {
+            String item = mapperUsernameComboBox.getItemAt(i);
+            if (item != null && item.equals(username)) {
+                mapperUsernameComboBox.setSelectedIndex(i);
+                return;
+            }
+        }
+
+        // Mapper not found in authorized list - add warning
+        Logging.warn("TM mapper '" + username + "' not found in authorized mapper list");
+        JOptionPane.showMessageDialog(
+            this,
+            "<html><b>Warning:</b> Mapper '" + username + "' is not in the authorized mapper list.<br>" +
+            "Please verify the mapper or refresh the mapper list.</html>",
+            "Mapper Not Found",
+            JOptionPane.WARNING_MESSAGE
+        );
     }
 }

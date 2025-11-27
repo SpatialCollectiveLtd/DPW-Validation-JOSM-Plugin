@@ -6,15 +6,16 @@ A JOSM plugin for streamlined quality assurance and validation workflow for the 
 
 
 
-**Current Version**: 3.0.1  # DPW Validation Tool for JOSM
-
-**Release Date**: November 4, 2025
+**Current Version**: 3.1.0-BETA  
+**Release Date**: TBD (BETA Testing Phase)
 
 The DPW (Digital Public Works) Validation Tool is a specialized plugin for the Java OpenStreetMap Editor (JOSM). Developed for the 2025 Digital Public Works project, this tool streamlines the quality assurance and validation workflow for the Settlement Digitization module.
 
 ---
 
-**Version 3.0.1** introduces cloud storage integration with automated Google Drive upload, along with the revolutionary streamlined workflow with automated export, validation preview panel, and enhanced confirmation dialogs.
+**Version 3.1.0-BETA** introduces **optional** HOT Tasking Manager integration (BETA) with automatic mapper detection from TM tasks, remote control workflow support, and a comprehensive settings panel for configuration without rebuilding the plugin.
+
+**Version 3.0.1** introduced cloud storage integration with automated Google Drive upload, along with the revolutionary streamlined workflow with automated export, validation preview panel, and enhanced confirmation dialogs.
 
 ## Features
 

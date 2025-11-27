@@ -62,6 +62,39 @@ public class DPWValidationToolPlugin extends Plugin {
             Logging.warn("DPWValidationTool: failed to register menu action: " + ex);
             Logging.trace(ex);
         }
+
+        // Register Settings menu action
+        try {
+            javax.swing.AbstractAction settingsAction = new javax.swing.AbstractAction("DPW Validation Settings...") {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    SettingsPanel.showSettingsDialog();
+                }
+            };
+            javax.swing.JMenuItem settingsMi = new javax.swing.JMenuItem(settingsAction);
+            MainApplication.getMenu().toolsMenu.add(settingsMi);
+        } catch (Exception ex) {
+            Logging.warn("DPWValidationTool: failed to register settings menu action: " + ex);
+            Logging.trace(ex);
+        }
+        
+        // Register Check for Updates menu action
+        try {
+            javax.swing.AbstractAction updateAction = new javax.swing.AbstractAction("Check for DPW Plugin Updates...") {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    UpdateChecker.checkForUpdatesAsync(true);
+                }
+            };
+            javax.swing.JMenuItem updateMi = new javax.swing.JMenuItem(updateAction);
+            MainApplication.getMenu().toolsMenu.add(updateMi);
+        } catch (Exception ex) {
+            Logging.warn("DPWValidationTool: failed to register update check menu action: " + ex);
+            Logging.trace(ex);
+        }
+        
+        // Check for updates on startup (silent - only show if update available)
+        UpdateChecker.checkForUpdatesAsync(false);
     }
 
     @Override
