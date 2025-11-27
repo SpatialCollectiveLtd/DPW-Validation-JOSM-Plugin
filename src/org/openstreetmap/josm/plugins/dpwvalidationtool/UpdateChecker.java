@@ -16,14 +16,14 @@ import java.nio.file.StandardCopyOption;
 
 /**
  * Checks for plugin updates from GitHub releases and auto-installs updates
- * @version 3.0.2
+ * @version 3.0.3
  */
 public class UpdateChecker {
     
     // Changed from /releases/latest to /releases to include pre-releases and beta versions
     private static final String GITHUB_API_URL = "https://api.github.com/repos/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
     private static final String GITHUB_RELEASES_URL = "https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
-    private static final String CURRENT_VERSION = "3.0.2";
+    private static final String CURRENT_VERSION = "3.0.3";
     
     /**
      * Check for updates in background and show notification if available
@@ -167,8 +167,8 @@ public class UpdateChecker {
     
     /**
      * Compare version strings
-     * Returns true if latest version is newer than current OR if versions are equal
-     * (to account for JAR updates within same version)
+     * For BETA users: Always check if there's a newer stable release (by any version number)
+     * For stable users: Only upgrade to higher version numbers
      */
     private static boolean isNewerVersion(String latest, String current) {
         try {
@@ -179,6 +179,17 @@ public class UpdateChecker {
                 return false;
             }
             
+            // If current is BETA and latest is stable, always offer the update
+            // (BETA users should upgrade to official releases regardless of version numbers)
+            boolean currentIsBeta = current.toUpperCase().contains("BETA") || current.toUpperCase().contains("ALPHA");
+            boolean latestIsStable = !latest.toUpperCase().contains("BETA") && !latest.toUpperCase().contains("ALPHA");
+            
+            if (currentIsBeta && latestIsStable) {
+                Logging.info("UpdateChecker: BETA user upgrading to stable release: " + latest);
+                return true;
+            }
+            
+            // For stable-to-stable or BETA-to-BETA, compare version numbers
             // Remove BETA/ALPHA suffixes for comparison
             String latestClean = latest.replaceAll("-.*$", "");
             String currentClean = current.replaceAll("-.*$", "");
@@ -197,11 +208,6 @@ public class UpdateChecker {
                 } else if (latestNum < currentNum) {
                     return false;
                 }
-            }
-            
-            // If base versions are equal, check if current is BETA and latest is stable
-            if (current.contains("BETA") && !latest.contains("BETA")) {
-                return true;
             }
             
             return false;
