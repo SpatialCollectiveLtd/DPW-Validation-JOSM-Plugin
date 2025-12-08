@@ -120,9 +120,9 @@ public class ValidationToolPanel extends ToggleDialog {
     private JLabel[] errorCountLabels = new JLabel[errorTypes.length];
     
     public ValidationToolPanel() {
-        super(I18n.tr("DPW Validation Tool v3.1.0-BETA"), "validator", I18n.tr("Open DPW Validation Tool"), null, 150);
+        super(I18n.tr("DPW Validation Tool v" + UpdateChecker.CURRENT_VERSION), "validator", I18n.tr("Open DPW Validation Tool"), null, 150);
         try {
-            Logging.info("DPWValidationTool: constructing ValidationToolPanel v3.1.0-BETA");
+            Logging.info("DPWValidationTool: constructing ValidationToolPanel v" + UpdateChecker.CURRENT_VERSION);
             setupUI();
             updatePanelData();
             
@@ -265,10 +265,11 @@ public class ValidationToolPanel extends ToggleDialog {
     mpGbc.gridx = 1;
     mpGbc.weightx = 0;
     mpGbc.fill = GridBagConstraints.NONE;
-    refreshMapperListButton = new JButton("\u21bb");
+    refreshMapperListButton = new JButton("🔄");
     refreshMapperListButton.setMargin(new Insets(2,2,2,2));
-    refreshMapperListButton.setPreferredSize(new Dimension(26, 22));
-    refreshMapperListButton.setToolTipText("Refresh authorized mapper list");
+    refreshMapperListButton.setPreferredSize(new Dimension(28, 24));
+    refreshMapperListButton.setToolTipText("<html><b>Refresh Mapper List</b><br>Download latest authorized mappers from server</html>");
+    refreshMapperListButton.setFont(refreshMapperListButton.getFont().deriveFont(14f));
     mapperPanel.add(refreshMapperListButton, mpGbc);
     
     panel.add(mapperPanel, gbc);
@@ -302,9 +303,10 @@ public class ValidationToolPanel extends ToggleDialog {
     dateIsolatePanel.add(datePickerComponent);
     
     // isolate button right next to date picker
-    isolateButton = new JButton("Isolate");
-    isolateButton.setToolTipText("Isolate work for selected mapper and date");
-    isolateButton.setPreferredSize(new Dimension(100, 24));
+    isolateButton = new JButton("🔍 Isolate Work");
+    isolateButton.setToolTipText("<html><b>Isolate mapper's buildings</b><br>Downloads and filters data for selected mapper and date</html>");
+    isolateButton.setPreferredSize(new Dimension(140, 26));
+    isolateButton.setFont(isolateButton.getFont().deriveFont(Font.BOLD));
     dateIsolatePanel.add(isolateButton);
     
     gbc.gridx = 1;
@@ -395,15 +397,27 @@ public class ValidationToolPanel extends ToggleDialog {
     gbc.gridy++;
     gbc.gridwidth = 3;
     gbc.fill = GridBagConstraints.HORIZONTAL;
-    fetchStatusLabel = new JLabel("User list: unknown");
+    fetchStatusLabel = new JLabel("⏳ Loading user list...");
     fetchStatusLabel.setOpaque(true);
-    fetchStatusLabel.setBackground(Color.YELLOW);
+    fetchStatusLabel.setBackground(new Color(255, 243, 205)); // Soft amber
+    fetchStatusLabel.setForeground(new Color(102, 60, 0));
+    fetchStatusLabel.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(new Color(255, 200, 100), 1),
+        BorderFactory.createEmptyBorder(4, 8, 4, 8)
+    ));
+    fetchStatusLabel.setFont(fetchStatusLabel.getFont().deriveFont(12f));
     panel.add(fetchStatusLabel, gbc);
 
     gbc.gridy++;
-    authStatusLabel = new JLabel("Mapper authorization: unknown");
+    authStatusLabel = new JLabel("🔒 Checking authorization...");
     authStatusLabel.setOpaque(true);
-    authStatusLabel.setBackground(Color.LIGHT_GRAY);
+    authStatusLabel.setBackground(new Color(224, 224, 224)); // Light gray
+    authStatusLabel.setForeground(new Color(60, 60, 60));
+    authStatusLabel.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(new Color(180, 180, 180), 1),
+        BorderFactory.createEmptyBorder(4, 8, 4, 8)
+    ));
+    authStatusLabel.setFont(authStatusLabel.getFont().deriveFont(12f));
     panel.add(authStatusLabel, gbc);
 
         // v3.0 - Validation Preview Panel (collapsible)
@@ -419,19 +433,26 @@ public class ValidationToolPanel extends ToggleDialog {
         previewTextArea = new JTextArea(8, 40);
         previewTextArea.setEditable(false);
         previewTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
-        previewTextArea.setBackground(new Color(245, 245, 245));
+        previewTextArea.setBackground(new Color(250, 250, 255)); // Slightly blue tinted
+        previewTextArea.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(200, 200, 210), 1),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        ));
         JScrollPane previewScroll = new JScrollPane(previewTextArea);
         
-        JButton togglePreviewButton = new JButton("▼ Show Summary");
+        JButton togglePreviewButton = new JButton("📊 Show Validation Summary");
+        togglePreviewButton.setToolTipText("<html><b>Toggle validation summary</b><br>Shows error breakdown and details before submitting</html>");
+        togglePreviewButton.setPreferredSize(new Dimension(200, 28));
+        togglePreviewButton.setFont(togglePreviewButton.getFont().deriveFont(12f));
         togglePreviewButton.addActionListener(e -> {
             previewExpanded = !previewExpanded;
             if (previewExpanded) {
                 updateValidationPreview();
                 previewScroll.setVisible(true);
-                togglePreviewButton.setText("▲ Hide Summary");
+                togglePreviewButton.setText("⚫ Hide Validation Summary");
             } else {
                 previewScroll.setVisible(false);
-                togglePreviewButton.setText("▼ Show Summary");
+                togglePreviewButton.setText("📊 Show Validation Summary");
             }
             validationPreviewPanel.revalidate();
             validationPreviewPanel.repaint();
@@ -446,11 +467,16 @@ public class ValidationToolPanel extends ToggleDialog {
         // Action Button - Record validation data
         // v3.0.2: Removed Reject button - validators record all work as "Validated"
         // and mark incomplete tasks in HOT Tasking Manager for mapper to fix
-    validateButton = new JButton("Record Validation");
+    validateButton = new JButton("✅ Record Validation");
     validateButton.setToolTipText("<html><b>Record this validation in DPW Manager</b><br>" +
         "Logs the mapper's work with error counts and comments.<br>" +
         "All work is recorded regardless of quality - you mark incomplete<br>" +
         "tasks in HOT Tasking Manager for the mapper to fix later.</html>");
+    validateButton.setPreferredSize(new Dimension(180, 32));
+    validateButton.setFont(validateButton.getFont().deriveFont(Font.BOLD, 13f));
+    validateButton.setBackground(new Color(76, 175, 80)); // Green
+    validateButton.setForeground(Color.WHITE);
+    validateButton.setFocusPainted(false);
 
     // Use a compact FlowLayout
     JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));

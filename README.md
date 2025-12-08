@@ -1,6 +1,8 @@
-# DPW Validation Tool for JOSM![Build](https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/actions/workflows/ci.yml/badge.svg)
+# DPW Validation Tool for JOSM
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Build](https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/actions/workflows/ci.yml/badge.svg)
+![License](https://img.shields.io/badge/license-Proprietary-red.svg)
+![Status](https://img.shields.io/badge/status-Internal_Use_Only-orange.svg)
 
 A JOSM plugin for streamlined quality assurance and validation workflow for the Digital Public Works Settlement Digitization project.![Release](https://img.shields.io/github/v/release/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin)
 
@@ -728,8 +730,21 @@ Please avoid committing large binary dependencies to git in future patches; cons
 
 ## License & Ownership
 
-This plugin is maintained and owned by Spatial Collective Ltd.
-For licensing and commercial questions, contact the maintainers.
+**PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED**
+
+Copyright © 2025 Spatial Collective Ltd. All Rights Reserved.
+
+This software is proprietary and confidential. Unauthorized copying, distribution, 
+modification, or use of this software, via any medium, is strictly prohibited without 
+express written permission from Spatial Collective Ltd.
+
+**This plugin is NOT open source.** While it interfaces with OpenStreetMap and JOSM 
+(which are open source), the DPW Validation Tool plugin itself is private company property 
+and is licensed only for internal use within the Digital Public Works project.
+
+For licensing inquiries, contact: info@spatialcollective.com
+
+See [LICENSE](LICENSE) file for complete terms and conditions.
 
 ---
 

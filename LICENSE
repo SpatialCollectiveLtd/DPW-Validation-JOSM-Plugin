@@ -1,42 +1,97 @@
-MIT License
+PROPRIETARY SOFTWARE LICENSE
 
-Copyright (c) 2025 Spatial Collective Ltd
+Copyright (c) 2025 Spatial Collective Ltd. All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+================================================================================
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+IMPORTANT: READ CAREFULLY BEFORE USING THIS SOFTWARE
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-MIT License
+This DPW Validation Tool JOSM Plugin ("Software") is proprietary software owned 
+by Spatial Collective Ltd ("Company"). This Software is licensed, not sold, 
+and is protected by copyright laws and international treaty provisions.
 
-Copyright (c) 2025 Spatial Collective Limited
+================================================================================
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+LICENSE GRANT
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Subject to the terms and conditions of this License, Company grants to 
+authorized personnel of the Digital Public Works Settlement Digitization 
+project ("Authorized Users") a limited, non-exclusive, non-transferable, 
+revocable license to use the Software solely for internal business purposes 
+related to the Digital Public Works project.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+RESTRICTIONS
+
+You may NOT:
+1. Copy, modify, or create derivative works of the Software
+2. Distribute, sublicense, rent, lease, or lend the Software
+3. Reverse engineer, decompile, or disassemble the Software
+4. Remove or alter any proprietary notices or labels
+5. Use the Software for any purpose other than the Digital Public Works project
+6. Transfer this license to any third party
+7. Make the Software available to any third party
+8. Use the Software for commercial purposes outside the project scope
+
+OWNERSHIP
+
+The Software is licensed, not sold. Company and its licensors retain all right, 
+title, and interest in and to the Software, including all intellectual property 
+rights. This License does not grant you any rights to trademarks, service marks, 
+or logos of Company.
+
+TERMINATION
+
+This License is effective until terminated. Company may terminate this License 
+at any time without notice if you fail to comply with any term or condition. 
+Upon termination, you must immediately cease all use of the Software and destroy 
+all copies in your possession or control.
+
+CONFIDENTIALITY
+
+The Software contains proprietary and confidential information of Company. You 
+agree to maintain the confidentiality of the Software and not disclose it to 
+any third party without prior written consent from Company.
+
+DISCLAIMER OF WARRANTIES
+
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. COMPANY DOES NOT 
+WARRANT THAT THE SOFTWARE WILL MEET YOUR REQUIREMENTS OR THAT THE OPERATION 
+OF THE SOFTWARE WILL BE UNINTERRUPTED OR ERROR-FREE.
+
+LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL COMPANY BE LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR 
+CONSEQUENTIAL DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR 
+LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, 
+OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR INABILITY TO USE THE 
+SOFTWARE, EVEN IF COMPANY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+ACKNOWLEDGMENT
+
+BY USING THIS SOFTWARE, YOU ACKNOWLEDGE THAT YOU HAVE READ THIS LICENSE, 
+UNDERSTAND IT, AND AGREE TO BE BOUND BY ITS TERMS AND CONDITIONS.
+
+For licensing inquiries or permissions, contact:
+Spatial Collective Ltd
+Email: tech@spatialcollective.com
+
+================================================================================
+
+NOTE ON OPENSTREETMAP DATA
+
+While this Software is proprietary, it is designed to work with OpenStreetMap 
+data. OpenStreetMap data is licensed under the Open Database License (ODbL). 
+The OpenStreetMap Foundation does not endorse or affiliate with this Software 
+or Spatial Collective Ltd. Use of OpenStreetMap data must comply with the ODbL 
+and OpenStreetMap Community Guidelines.
+
+This Software interfaces with JOSM (Java OpenStreetMap Editor), which is 
+licensed under GPL v2 or later. This proprietary license applies ONLY to the 
+DPW Validation Tool Plugin code, not to JOSM or any of its components.
+
+================================================================================
+
+Last Updated: December 8, 2025
+Version: 1.0
