@@ -17,6 +17,10 @@ public class DPWValidationToolPlugin extends Plugin {
 
     public DPWValidationToolPlugin(PluginInformation info) {
         super(info);
+        
+        // Check for pending updates on startup
+        UpdateChecker.applyPendingUpdate();
+        
         // Defer constructing the UI panel until a MapFrame is available.
         // Creating a ToggleDialog too early can cause a NullPointerException
         // because internal titleBar fields are initialized later by JOSM.

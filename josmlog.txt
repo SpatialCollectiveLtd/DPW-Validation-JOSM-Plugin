@@ -1,0 +1,143 @@
+{{{
+Revision:19439
+Build-Date:2025-09-01 09:22:37
+
+Identification: JOSM/1.5 (19439 en) Windows 11 64-Bit
+OS Build number: Windows 10 Pro 24H2 (26100)
+Memory Usage: 432 MB / 18320 MB (304 MB allocated, but free)
+Java version: 21.0.8+9-LTS, Azul Systems, Inc., OpenJDK 64-Bit Server VM
+Look and Feel: com.sun.java.swing.plaf.windows.WindowsLookAndFeel
+Screen: \Display0 1366x768x32bpp@60Hz (scaling 1.00×1.00)
+Maximum Screen Size: 1366×768
+Best cursor sizes: 16×16→32×32, 32×32→32×32
+System property file.encoding: UTF-8
+System property sun.jnu.encoding: Cp1252
+Locale info: en_US
+Numbers with default locale: 1234567890 -> 1234567890
+VM arguments: [-Djpackage.app-version=1.5.19439, -XX:MaxRAMPercentage=75.0, --add-modules=java.scripting,java.sql,javafx.controls,javafx.media,javafx.swing,javafx.web, --add-exports=java.base/sun.security.action=ALL-UNNAMED, --add-exports=java.desktop/com.sun.imageio.plugins.jpeg=ALL-UNNAMED, --add-exports=java.desktop/com.sun.imageio.spi=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.nio=ALL-UNNAMED, --add-opens=java.base/jdk.internal.loader=ALL-UNNAMED, --add-opens=java.base/jdk.internal.ref=ALL-UNNAMED, --add-opens=java.desktop/javax.imageio.spi=ALL-UNNAMED, --add-opens=java.desktop/javax.swing.text.html=ALL-UNNAMED, --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED, -Djpackage.app-path=%UserProfile%\AppData\Local\JOSM\JOSM.exe]
+
+Plugins:
++ DPWMapper-1.0.0
++ DPWValidationTool (3.0.3)
+
+Last errors/warnings:
+- 00000.615 W: extended font config - overriding 'filename.Malgun_Gothic=malgun.ttf' with 'MALGUN.TTF'
+- 00000.620 W: extended font config - overriding 'filename.Myanmar_Text=mmrtext.ttf' with 'MMRTEXT.TTF'
+- 00000.620 W: extended font config - overriding 'filename.Mongolian_Baiti=monbaiti.ttf' with 'MONBAITI.TTF'
+- 00001.056 E: java.security.KeyStoreException: Windows-ROOT not found. Cause: java.security.NoSuchAlgorithmException: Windows-ROOT KeyStore not available
+- 00001.278 W: Missing plugin main version in plugin DPWValidationTool
+- 00002.027 W: Missing plugin main version in plugin DPWValidationTool
+- 00002.177 W: Warning - <html>JOSM could not find information about the following plugin:<ul><li>DPWMapper-1.0.0</li></ul>The plugin is not going to be loaded.</html>
+- 00066.561 W: Missing plugin main version in plugin DPWValidationTool
+
+
+cache.capabilities1637351842=1765178402
+cache.motd.html=1765178406
+cache.motd.html.java=21.0.8
+cache.motd.html.lang=En:
+cache.motd.html.version=19439
+changesetdialog.lastHeight=0
+commandstack.lastHeight=0
+conflict.lastHeight=0
+dpw-validation-tool.default-project-url=https://tasks.hotosm.org/projects/27396/
+dpw-validation-tool.tm-integration-enabled=true
+dpw.api_base_url=https://app.spatialcollective.com/api
+filter.lastHeight=0
+filters.entries=[{version=1, text=-new, mode=add, enable=false, hiding=true, inverted=false}]
+gui.geometry=x=-8,y=-8,width=1000,height=740
+gui.maximized=true
+imagery.entries=[{max-zoom=22, min-zoom=1, noTileHeaders={"X-VE-Tile-Info":["no-tile"]}, noTileChecksums={"MD5":["c13269481c73de6e18589f9fbc3bdf7e"]}, metadataHeaders={"X-VE-TILEMETA-CaptureDatesRange":"Capture Date"}, transparent=true, minimumTileExpire=3600, name=Bing aerial imagery, id=Bing, type=bing, url=https://www.bing.com/maps/, permission-reference-url=https://wiki.openstreetmap.org/wiki/Bing_Maps, cookies=, icon=data:image/png;base64,iVBORw0..., customHttpHeaders={}, category=photo},
+  {max-zoom=22, noTileHeaders={"Etag":["\"10i954m13i2\""]}, noTileChecksums={"MD5":["f27d9de7f80c13501f470595e327aa6d"]}, transparent=true, minimumTileExpire=3600, name=Esri World Imagery, id=EsriWorldImagery, type=tms, url=https://{switch:services,server}.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{zoom}/{y}/{x}, attribution-text=Terms & Feedback, attribution-url=https://wiki.openstreetmap.org/wiki/Esri, cookies=, icon=data:image/png;base64,iVBORw0..., customHttpHeaders={}, category=photo},
+  {max-zoom=22, transparent=true, minimumTileExpire=3600, name=Esri World Imagery (Clarity) Beta, id=EsriWorldImageryClarity, type=tms, url=https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{zoom}/{y}/{x}, attribution-text=Terms & Feedback, attribution-url=https://wiki.openstreetmap.org/wiki/Esri, permission-reference-url=https://github.com/osmlab/editor-layer-index/pull/358#issuecomment-361416110, cookies=, icon=data:image/png;base64,iVBORw0..., description=Esri archive imagery that may be clearer and more accurate than the default layer., customHttpHeaders={}, category=photo},
+  {max-zoom=22, noTileHeaders={"ETag":["\"336b022ed883bc72347a637634e490d4\"|\"067736a547cafe90014b4e59b6510abe\"|\"ee1f6802b0234046b553cbbc672ac7d9\"|\"9f5a2f1d7cc131e58befc2052c71c827\""]}, noTileChecksums={"MD5":["58e78313d04adf0ea64b8de8590c3d46"]}, transparent=true, minimumTileExpire=3600, name=Mapbox Satellite, id=Mapbox, type=tms, url=https://{switch:a,b,c,d}.tiles.mapbox.com/v4/mapbox.satellite/{zoom}/{x}/{y}.jpg?access_token={apikey}, attribution-text=Terms & Feedback, attribution-url=https://www.mapbox.com/about/maps/, permission-reference-url=https://wiki.openstreetmap.org/wiki/Vertical_Aerial_Photographs#DigitalGlobe_.2F_MapBox, cookies=, icon=data:image/png;base64,iVBORw0..., customHttpHeaders={"Referer":"https://josm.openstreetmap.de/"}, category=photo},
+  {max-zoom=19, valid-georeference=true, transparent=true, minimumTileExpire=3600, name=OpenStreetMap Carto (Standard), id=standard, type=tms, url=https://tile.openstreetmap.org/{zoom}/{x}/{y}.png, attribution-text=© OpenStreetMap contributors, attribution-url=https://www.openstreetmap.org/, permission-reference-url=https://wiki.osmfoundation.org/wiki/Terms_of_Use, cookies=, icon=data:image/png;base64,iVBORw0..., customHttpHeaders={}, category=osmbasedmap}
+]
+imagery.layers.default=[Bing, EsriWorldImagery, EsriWorldImageryClarity, Mapbox, standard]
+josm.version=19439
+lastDirectory=%UserProfile%\Downloads
+layerlist.lastHeight=20
+layerlist.minimized=true
+mappaint.renderer-class-name=org.openstreetmap.josm.data.osm.visitor.paint.StyledMapRenderer
+mappaint.style.known-defaults=[resource://styles/standard/elemstyles.mapcss]
+mapstyle.lastHeight=0
+minimap.lastHeight=0
+mirror.https://josm.openstreetmap.de/maps=[1765178537130, <josm.cache>\mirror_https___josm.openstreetmap.de_maps]
+mirror.https://josm.openstreetmap.de/presets=[1763995818059, <josm.cache>\mirror_https___josm.openstreetmap.de_presets]
+mirror.https://josm.openstreetmap.de/remote/geofabrik-index-v1-nogeom.json=[1765178409052, <josm.cache>\mirror_https___josm.openstreetmap.de_remote_geofabrik-index-v1-nogeom.json]
+mirror.https://josm.openstreetmap.de/tested=[1758201067231, <josm.cache>\mirror_https___josm.openstreetmap.de_tested]
+notes/note_open.lastHeight=0
+org.openstreetmap.josm.actions.ImageryAdjustAction$ImageryOffsetDialog.geometry=x=435,y=279,width=496,height=209
+org.openstreetmap.josm.gui.dialogs.DeleteFromRelationConfirmationDialog.geometry=x=483,y=284,width=400,height=200
+org.openstreetmap.josm.gui.dialogs.properties.TagEditHelper$AddTagsDialog.geometry=x=539,y=257,width=322,height=320
+org.openstreetmap.josm.gui.download.DownloadDialog.geometry=x=183,y=84,width=1000,height=600
+org.openstreetmap.josm.gui.help.HelpBrowser.geometry=x=0,y=0,width=600,height=400
+org.openstreetmap.josm.gui.history.HistoryBrowserDialogManager.geometry=x=212,y=268,width=850,height=500
+org.openstreetmap.josm.gui.io.UploadDialog.geometry=x=283,y=84,width=800,height=600
+org.openstreetmap.josm.gui.preferences.PreferenceDialog.geometry=x=333,y=33,width=800,height=701
+osm-download.bounds=-1.362176;36.721802;-1.356685;36.727295
+osm-server.upload-strategy=singlerequest
+osm-server.url-history=[, https://api06.dev.openstreetmap.org/api, https://master.apis.dev.openstreetmap.org/api]
+pluginmanager.lastupdate=1763966490440
+pluginmanager.version=19439
+plugins=[DPWMapper-1.0.0, DPWValidationTool]
+preferences.reset.draw.rawgps.lines=true
+properties.recent-tags=[building, yes]
+propertiesdialog.lastHeight=0
+propertiesdialog.visible=false
+relationlist.lastHeight=0
+relationlist.visible=false
+remotecontrol.always-confirm=true
+remotecontrol.enabled=true
+remotecontrol.new-layer=true
+remotecontrol.permission.authorization=true
+remotecontrol.permission.export=true
+remotecontrol.permission.open-files=true
+remotecontrol.permission.open-remote-files=true
+search.history=[RA  user:Bolt029, R user:]
+selectionlist.lastHeight=0
+selectionlist.visible=false
+sensitive.keys=[oauth.access-token.key, oauth.access-token.object.OAuth20.api.openstreetmap.org, oauth.access-token.parameters.OAuth20.api.openstreetmap.org, oauth.access-token.secret, osm-server.password, osm-server.username, proxy.pass, proxy.user, sensitive.keys]
+shortcut.entry.toolbar:tagging_Man Made/Man Made/Building=[Toolbar: Man Made/Man Made/Building, 65535, 5000, 66, 128, false, true]
+system_of_measurement=Metric
+toggleDialogs.width=447
+toolbar=[open,
+  save,
+  download,
+  upload,
+  |,
+  undo,
+  redo,
+  |,
+  dialogs/search,
+  preference,
+  |,
+  splitway,
+  combineway,
+  wayflip,
+  |,
+  imagery-offset,
+  |,
+  tagginggroup_Highways/Streets,
+  tagginggroup_Highways/Ways,
+  tagginggroup_Highways/Waypoints,
+  tagginggroup_Highways/Barriers,
+  |,
+  tagginggroup_Transport/Car,
+  tagginggroup_Transport/Public Transport,
+  |,
+  tagginggroup_Facilities/Tourism,
+  tagginggroup_Facilities/Food+Drinks,
+  |,
+  tagginggroup_Man Made/Historic Places,
+  |,
+  tagginggroup_Man Made/Man Made,
+  tagging_Man Made/Man Made/Building
+]
+upload.comment.history=[#hotosm-project-20235, #hotosm-project-31257]
+upload.comment.last-used=1763996643
+upload.source.history=[Maxar-Standard, Mapbox, knowledge, survey, Bing]
+userlist.lastHeight=0
+validator.geometry=x=257,y=289,width=852,height=342
+validator.lastHeight=565
+validator.visible=true
+}}}

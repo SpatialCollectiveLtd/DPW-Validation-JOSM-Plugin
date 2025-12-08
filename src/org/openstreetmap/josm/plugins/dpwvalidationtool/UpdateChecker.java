@@ -23,7 +23,56 @@ public class UpdateChecker {
     // Changed from /releases/latest to /releases to include pre-releases and beta versions
     private static final String GITHUB_API_URL = "https://api.github.com/repos/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
     private static final String GITHUB_RELEASES_URL = "https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
-    public static final String CURRENT_VERSION = "3.0.4";
+    public static final String CURRENT_VERSION = "3.0.5";
+    
+    /**
+     * Check for pending update and apply it on startup
+     * This is called when the plugin loads, before JOSM locks the JAR file
+     */
+    public static void applyPendingUpdate() {
+        try {
+            String josmHome = System.getProperty("josm.home");
+            if (josmHome == null) {
+                josmHome = System.getProperty("user.home") + File.separator + ".josm";
+            }
+            Path pluginDir = Paths.get(josmHome, "plugins");
+            Path updateFile = pluginDir.resolve("DPWValidationTool.jar.new");
+            Path currentFile = pluginDir.resolve("DPWValidationTool.jar");
+            Path backupFile = pluginDir.resolve("DPWValidationTool.jar.bak");
+            
+            if (Files.exists(updateFile)) {
+                Logging.info("UpdateChecker: Found pending update, installing...");
+                
+                // Backup current version
+                if (Files.exists(currentFile)) {
+                    Files.move(currentFile, backupFile, StandardCopyOption.REPLACE_EXISTING);
+                    Logging.info("UpdateChecker: Backed up current version");
+                }
+                
+                // Install the new version
+                Files.move(updateFile, currentFile, StandardCopyOption.REPLACE_EXISTING);
+                Logging.info("UpdateChecker: Update installed successfully!");
+                
+                // Show success notification
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(
+                        null,
+                        "<html><b>DPW Validation Tool Updated!</b><br><br>"
+                            + "The plugin has been successfully updated.<br>"
+                            + "New version is now active.</html>",
+                        "Update Complete",
+                        JOptionPane.INFORMATION_MESSAGE
+                    );
+                });
+                
+                // Delete backup after success
+                Files.deleteIfExists(backupFile);
+            }
+        } catch (Exception e) {
+            Logging.error("UpdateChecker: Failed to apply pending update: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
     
     /**
      * Check for updates in background and show notification if available
@@ -415,23 +464,21 @@ public class UpdateChecker {
                     return;
                 }
                 
-                // Replace the old JAR with the new one
+                // Prepare update for next restart
                 SwingUtilities.invokeLater(() -> {
                     progressBar.setValue(100);
-                    progressBar.setString("Installing...");
+                    progressBar.setString("Preparing update...");
                 });
                 
-                // Backup old file
-                Path backupFile = pluginDir.resolve("DPWValidationTool.jar.bak");
-                if (Files.exists(targetFile)) {
-                    Files.move(targetFile, backupFile, StandardCopyOption.REPLACE_EXISTING);
-                }
+                // IMPORTANT: Cannot replace the JAR while JOSM is running (file is locked)
+                // Solution: Rename downloaded file to .jar.new and let JOSM handle it on restart
+                Path updateFile = pluginDir.resolve("DPWValidationTool.jar.new");
                 
-                // Move temp file to target
-                Files.move(tempFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+                // Move downloaded file to .jar.new (this will be picked up on restart)
+                Files.move(tempFile, updateFile, StandardCopyOption.REPLACE_EXISTING);
                 
-                // Delete backup on success
-                Files.deleteIfExists(backupFile);
+                Logging.info("UpdateChecker: Update prepared at: " + updateFile.toString());
+                Logging.info("UpdateChecker: JOSM will install the update on next restart");
                 
                 SwingUtilities.invokeLater(() -> {
                     progressDialog.dispose();
@@ -439,11 +486,11 @@ public class UpdateChecker {
                     // Show success message
                     int restart = JOptionPane.showConfirmDialog(
                         null,
-                        "<html><b>Update installed successfully!</b><br><br>" +
-                        "DPW Validation Tool has been updated to version " + info.latestVersion + ".<br><br>" +
-                        "<b>You must restart JOSM for the changes to take effect.</b><br><br>" +
-                        "Would you like to restart JOSM now?</html>",
-                        "Update Complete",
+                        "<html><b>Update downloaded successfully!</b><br><br>" +
+                        "DPW Validation Tool v" + info.latestVersion + " is ready to install.<br><br>" +
+                        "<b>The update will be applied when you restart JOSM.</b><br><br>" +
+                        "Would you like to close JOSM now to complete the update?</html>",
+                        "Update Ready",
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.INFORMATION_MESSAGE
                     );
@@ -452,10 +499,11 @@ public class UpdateChecker {
                         // Show message that user needs to restart manually
                         JOptionPane.showMessageDialog(
                             null,
-                            "<html><b>Update installed successfully!</b><br><br>" +
-                            "Please close JOSM manually and restart it to use the updated plugin.<br><br>" +
-                            "<i>Note: JOSM will NOT restart automatically. Please restart manually.</i></html>",
-                            "Restart JOSM Manually",
+                            "<html><b>Please restart JOSM to complete the update</b><br><br>" +
+                            "Close JOSM completely and restart it.<br>" +
+                            "The new version will be installed automatically on startup.<br><br>" +
+                            "<i>Note: The update will NOT be applied until you restart JOSM.</i></html>",
+                            "Restart Required",
                             JOptionPane.INFORMATION_MESSAGE
                         );
                     }
