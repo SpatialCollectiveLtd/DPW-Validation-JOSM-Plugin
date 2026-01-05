@@ -63,21 +63,24 @@ public class UpdateChecker {
                         + "<i>Note: Restart JOSM for full update.</i></html>",
                     "Update Complete",
                     JOptionPane.INFORMATION_MESSAGE
-                );
+                    );
                 
-                // Attempt to refresh title in existing panel
-                try {
-                    DPWValidationToolPlugin plugin = DPWValidationToolPlugin.getInstance();
-                    if (plugin != null) {
-                        ValidationToolPanel panel = plugin.getValidationToolPanel();
-                        if (panel != null) {
-                            Logging.info("UpdateChecker: Refreshing panel title after update");
-                            panel.refreshTitle();
+                    // Attempt to refresh title in existing panel
+                    try {
+                        DPWValidationToolPlugin plugin = DPWValidationToolPlugin.getInstance();
+                        if (plugin != null) {
+                            ValidationToolPanel panel = plugin.getValidationToolPanel();
+                            if (panel != null) {
+                                Logging.info("UpdateChecker: Refreshing panel title after update");
+                                panel.refreshTitle();
+                            }
                         }
+                    } catch (Exception ex) {
+                        Logging.warn("UpdateChecker: Could not refresh panel title: " + ex.getMessage());
                     }
-                } catch (Exception e) {
-                    Logging.warn("UpdateChecker: Could not refresh panel title: " + e.getMessage());
-                }
+                });
+            }
+        } catch (Exception e) {
             Logging.error("UpdateChecker: Failed to apply pending update: " + e.getMessage());
             e.printStackTrace();
         }

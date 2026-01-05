@@ -796,8 +796,8 @@ public class ValidationToolPanel extends ToggleDialog {
                             
                             // If we get here, the primitive passed both mapper and date filters
                             selected.add(p);
-                        } catch (Exception e) {
-                            Logging.debug("DPWValidationTool: Non-critical error processing primitive: " + e.getMessage());
+                        } catch (Exception ex) {
+                            Logging.debug("DPWValidationTool: Non-critical error processing primitive: " + ex.getMessage());
                         }
                     }
                     if (selected.isEmpty()) {
@@ -831,8 +831,8 @@ public class ValidationToolPanel extends ToggleDialog {
                                     existingNodeIds.add(uid);
                                 }
                             }
-                        } catch (Exception e) {
-                            Logging.debug("DPWValidationTool: Non-critical error processing way nodes: " + e.getMessage());
+                        } catch (Exception ex) {
+                            Logging.debug("DPWValidationTool: Non-critical error processing way nodes: " + ex.getMessage());
                         }
                     }
                     // Log IDs and dataset presence for diagnostics before cloning
@@ -842,8 +842,8 @@ public class ValidationToolPanel extends ToggleDialog {
                             long id = p.getId();
                             boolean hasDs = p.getDataSet() != null;
                             ids.append(String.format("[type=%s id=%d dataset=%s] ", p.getClass().getSimpleName(), id, hasDs ? "yes" : "no"));
-                        } catch (Exception e) {
-                            Logging.debug("DPWValidationTool: Error logging primitive info: " + e.getMessage());
+                        } catch (Exception ex) {
+                            Logging.debug("DPWValidationTool: Error logging primitive info: " + ex.getMessage());
                         }
                     }
                     Logging.info("DPWValidationTool: primitives before clone: " + ids.toString());

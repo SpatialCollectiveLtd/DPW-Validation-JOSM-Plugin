@@ -150,31 +150,35 @@ public class DPWAPIClient {
         
         Logging.debug("DPWValidationTool: Fetching authorized mappers from " + fullUrl);
         
-        URL url = new URI(fullUrl).toURL();
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
-        conn.setRequestProperty("Accept", "application/json");
-        conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.0.6 (JOSM Validation Tool)");
-        conn.setRequestProperty("X-API-Key", DPW_API_KEY);
-        conn.setConnectTimeout(ValidationConstants.CONNECTION_TIMEOUT_MS);
-        conn.setReadTimeout(ValidationConstants.READ_TIMEOUT_MS);
-        
-        int responseCode = conn.getResponseCode();
-        
-        // Log rate limit headers (as recommended by DPW team)
-        logRateLimitHeaders(conn);
-        
-        // Read response body
-        String responseBody = readResponse(conn, responseCode);
-        Logging.debug("DPWValidationTool: API response: " + responseBody);
-        
-        if (responseCode < 200 || responseCode >= 300) {
-            String errorMsg = extractErrorMessage(responseBody);
-            throw new APIException("Failed to fetch authorized mappers: HTTP " + responseCode + " - " + errorMsg);
+        try {
+            URL url = new URI(fullUrl).toURL();
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.0.6 (JOSM Validation Tool)");
+            conn.setRequestProperty("X-API-Key", DPW_API_KEY);
+            conn.setConnectTimeout(ValidationConstants.CONNECTION_TIMEOUT_MS);
+            conn.setReadTimeout(ValidationConstants.READ_TIMEOUT_MS);
+            
+            int responseCode = conn.getResponseCode();
+            
+            // Log rate limit headers (as recommended by DPW team)
+            logRateLimitHeaders(conn);
+            
+            // Read response body
+            String responseBody = readResponse(conn, responseCode);
+            Logging.debug("DPWValidationTool: API response: " + responseBody);
+            
+            if (responseCode < 200 || responseCode >= 300) {
+                String errorMsg = extractErrorMessage(responseBody);
+                throw new APIException("Failed to fetch authorized mappers: HTTP " + responseCode + " - " + errorMsg);
+            }
+            
+            // Parse JSON response
+            return parseUserListJson(responseBody);
+        } catch (java.net.URISyntaxException e) {
+            throw new IOException("Invalid API URL: " + fullUrl, e);
         }
-        
-        // Parse JSON response
-        return parseUserListJson(responseBody);
     }
     
     /**

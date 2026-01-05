@@ -4,7 +4,7 @@
 /dist/
 
 # Build files
-build.xml
+# build.xml - NEEDED FOR CI/CD
 josm-tested.jar
 manifest.txt
 sources.txt

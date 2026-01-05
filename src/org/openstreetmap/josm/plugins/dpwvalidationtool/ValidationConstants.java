@@ -64,9 +64,11 @@ public final class ValidationConstants {
     
     /** API connection timeout in milliseconds */
     public static final int API_TIMEOUT_MS = 10000; // 10 seconds
+    public static final int CONNECTION_TIMEOUT_MS = API_TIMEOUT_MS; // Alias for compatibility
     
     /** API read timeout in milliseconds */
     public static final int API_READ_TIMEOUT_MS = 10000; // 10 seconds
+    public static final int READ_TIMEOUT_MS = API_READ_TIMEOUT_MS; // Alias for compatibility
     
     // ========================================================================
     // CACHE & RATE LIMITING
