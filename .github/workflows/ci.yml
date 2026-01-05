@@ -23,6 +23,13 @@ jobs:
     - name: Install Ant
       run: sudo apt-get update && sudo apt-get install -y ant
 
+    - name: Download JOSM
+      run: |
+        echo "Downloading JOSM tested jar..."
+        wget -q https://josm.openstreetmap.de/download/josm-tested.jar -O josm-tested.jar
+        echo "JOSM downloaded successfully"
+        ls -lh josm-tested.jar
+
     - name: Build with Ant
       run: ant -f build.xml clean dist
 
