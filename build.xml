@@ -17,8 +17,7 @@
     <property name="dist.dir" location="dist"/>
     <property name="josm.jar" location="josm-tested.jar"/>
     
-    <!-- Java compiler executable (JDK 21) -->
-    <property name="javac.executable" location="C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.8.9-hotspot\\bin\\javac.exe"/>
+    <!-- Java compiler - will auto-detect from JAVA_HOME if not specified -->
 
     <!-- Classpath for plugin compilation -->
     <path id="plugin.classpath">
@@ -55,8 +54,7 @@
                debug="true"
                includeantruntime="false"
                release="21"
-               fork="true"
-               executable="${javac.executable}">
+               fork="true">
             <compilerarg value="-Xlint:unchecked"/>
             <compilerarg value="-Xlint:deprecation"/>
         </javac>
@@ -89,8 +87,7 @@
                debug="true"
                includeantruntime="false"
                release="21"
-               fork="true"
-               executable="${javac.executable}">
+               fork="true">
             <compilerarg value="-Xlint:unchecked"/>
             <compilerarg value="-Xlint:deprecation"/>
         </javac>
