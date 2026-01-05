@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
  * Client for interacting with HOT Tasking Manager API
  * Handles task information retrieval and mapper detection
  * 
- * @version 3.1.0-BETA
+ * @version 3.0.6
  */
 public class TaskManagerAPIClient {
     

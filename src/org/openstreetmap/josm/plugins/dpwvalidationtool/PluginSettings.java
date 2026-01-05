@@ -7,7 +7,7 @@ import org.openstreetmap.josm.spi.preferences.Config;
  * Manages plugin settings and preferences
  * Stores configuration in JOSM's preference system
  * 
- * @version 3.1.0-BETA
+ * @version 3.0.6
  */
 public class PluginSettings {
     
