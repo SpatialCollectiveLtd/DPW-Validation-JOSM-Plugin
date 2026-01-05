@@ -12,11 +12,35 @@ import java.awt.event.ActionEvent;
 
 public class DPWValidationToolPlugin extends Plugin {
 
+    private static DPWValidationToolPlugin instance;
     private ValidationToolPanel validationToolPanel;
     private boolean panelAdded = false;
 
+    /**
+     * Get the singleton instance of the plugin.
+     * Used for accessing the validation panel after updates.
+     * 
+     * @return the plugin instance, or null if not initialized
+     * @since 3.0.6
+     */
+    public static DPWValidationToolPlugin getInstance() {
+        return instance;
+    }
+
+    /**
+     * Get the validation tool panel instance.
+     * Used for updating title after auto-updates.
+     * 
+     * @return the validation panel, or null if not created yet
+     * @since 3.0.6
+     */
+    public ValidationToolPanel getValidationToolPanel() {
+        return validationToolPanel;
+    }
+
     public DPWValidationToolPlugin(PluginInformation info) {
         super(info);
+        instance = this; // Store singleton instance
         
         // Check for pending updates on startup
         UpdateChecker.applyPendingUpdate();

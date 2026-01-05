@@ -71,8 +71,10 @@ public class ValidationToolPanel extends ToggleDialog {
     private JComboBox<String> mapperUsernameComboBox;
     private JTextField totalBuildingsField;
     private JTextArea validatorCommentsArea;
-    private List<String> authorizedMappers = new ArrayList<>();
-    private Map<String, String> mapperSettlements = new HashMap<>(); // username -> settlement mapping
+    private final List<String> authorizedMappers = new ArrayList<>();
+    private final Map<String, String> mapperSettlements = new HashMap<>(); // username -> settlement mapping
+    private final Object mapperLock = new Object(); // Thread-safe lock for mapper collections
+    private final Object settlementLock = new Object(); // Thread-safe lock for settlement map
     private JLabel authStatusLabel;
     private JLabel fetchStatusLabel;
     private JButton validateButton;
@@ -157,19 +159,42 @@ public class ValidationToolPanel extends ToggleDialog {
         }
     }
 
+    /**
+     * Initialize and layout the user interface.
+     * Builds the complete UI by calling specialized setup methods for each section.
+     */
     private void setupUI() {
         JPanel panel = new JPanel(new GridBagLayout());
-        // Constrain preferred width so the toggle dialog doesn't expand too wide
         panel.setPreferredSize(new Dimension(640, 480));
         panel.setMaximumSize(new Dimension(1024, 800));
+        
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(2, 5, 2, 5);
         gbc.anchor = GridBagConstraints.WEST;
-
-        // v3.1.0-BETA: TM URL field (optional, only shown if TM integration enabled)
+        gbc.gridy = 0;
+        
+        // Build UI sections
+        setupTaskInfoSection(panel, gbc);
+        setupMapperSection(panel, gbc);
+        setupDateAndIsolateSection(panel, gbc);
+        setupTotalBuildingsField(panel, gbc);
+        setupErrorTrackingSection(panel, gbc);
+        setupCommentsSection(panel, gbc);
+        setupStatusLabels(panel, gbc);
+        setupValidationPreviewPanel(panel, gbc);
+        setupActionButtons(panel, gbc);
+        
+        createLayout(panel, false, null);
+    }
+    
+    /**
+     * Setup task information section (TM URL, Task ID, Settlement).
+     */
+    private void setupTaskInfoSection(JPanel panel, GridBagConstraints gbc) {
+        // TM URL field (optional, only shown if TM integration enabled)
         if (PluginSettings.isTMIntegrationEnabled()) {
             gbc.gridx = 0;
-            gbc.gridy = 0;
+            gbc.gridwidth = 1;
             gbc.fill = GridBagConstraints.NONE;
             gbc.weightx = 0;
             JLabel tmLabel = new JLabel("<html><b>TM Project URL:</b></html>");
@@ -186,17 +211,17 @@ public class ValidationToolPanel extends ToggleDialog {
                 "Example: https://tasks.hotosm.org/projects/27396<br>" +
                 "This enables Task ID auto-detection when you load tasks via remote control.<br>" +
                 "Set default URL in Tools → DPW Validation Tool Settings to avoid re-entering.</html>");
+            
             // Pre-fill from default project URL in settings
             String defaultProjectUrl = PluginSettings.getDefaultProjectUrl();
             if (defaultProjectUrl != null && !defaultProjectUrl.trim().isEmpty()) {
                 tmUrlField.setText(defaultProjectUrl.trim());
             }
             panel.add(tmUrlField, gbc);
-            
             gbc.gridy++;
         }
 
-        // Task ID - start at current gridy position (not reset to 0)
+        // Task ID field
         gbc.gridx = 0;
         gbc.gridwidth = 1;
         gbc.fill = GridBagConstraints.NONE;
@@ -215,7 +240,7 @@ public class ValidationToolPanel extends ToggleDialog {
             "Or manually enter the task number here (e.g., 27, 20, 24)</html>");
         panel.add(taskIdField, gbc);
 
-        // Settlement (optional field)
+        // Settlement field (optional, auto-filled)
         gbc.gridx = 0;
         gbc.gridy++;
         gbc.gridwidth = 1;
@@ -229,93 +254,57 @@ public class ValidationToolPanel extends ToggleDialog {
         gbc.weightx = 1.0;
         settlementField = new JTextField();
         settlementField.setToolTipText("Auto-filled from DPW system based on selected mapper");
-        settlementField.setEditable(false); // Make read-only, auto-filled from API
-        settlementField.setBackground(new Color(240, 240, 240)); // Gray background to indicate read-only
+        settlementField.setEditable(false);
+        settlementField.setBackground(new Color(240, 240, 240));
         panel.add(settlementField, gbc);
-
-    // NOTE: the mapper-list refresh button will be placed beside the mapper combo (small icon)
-
-        // Mapper Username
-        gbc.gridx = 0;
         gbc.gridy++;
+    }
+    
+    /**
+     * Setup mapper selection section with refresh button.
+     */
+    private void setupMapperSection(JPanel panel, GridBagConstraints gbc) {
+        // Mapper Username label
+        gbc.gridx = 0;
         gbc.gridwidth = 1;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
         panel.add(new JLabel("Mapper Username:"), gbc);
 
-    // place mapper combo and refresh button on top row
-    gbc.gridx = 1;
-    gbc.gridwidth = 3;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    gbc.weightx = 1.0;
-    JPanel mapperPanel = new JPanel(new GridBagLayout());
-    GridBagConstraints mpGbc = new GridBagConstraints();
-    mpGbc.insets = new Insets(0, 0, 0, 4);
-    mpGbc.gridy = 0;
+        // Mapper combo and refresh button panel
+        gbc.gridx = 1;
+        gbc.gridwidth = 3;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        JPanel mapperPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints mpGbc = new GridBagConstraints();
+        mpGbc.insets = new Insets(0, 0, 0, 4);
+        mpGbc.gridy = 0;
 
-    // Combo expands
-    mpGbc.gridx = 0;
-    mpGbc.weightx = 1.0;
-    mpGbc.fill = GridBagConstraints.HORIZONTAL;
-    mapperUsernameComboBox = new JComboBox<>();
-    mapperUsernameComboBox.setPreferredSize(new Dimension(220, 24));
-    mapperPanel.add(mapperUsernameComboBox, mpGbc);
+        // Mapper combo box (expandable)
+        mpGbc.gridx = 0;
+        mpGbc.weightx = 1.0;
+        mpGbc.fill = GridBagConstraints.HORIZONTAL;
+        mapperUsernameComboBox = new JComboBox<>();
+        mapperUsernameComboBox.setPreferredSize(new Dimension(220, 24));
+        mapperPanel.add(mapperUsernameComboBox, mpGbc);
 
-    // small refresh button stays compact
-    mpGbc.gridx = 1;
-    mpGbc.weightx = 0;
-    mpGbc.fill = GridBagConstraints.NONE;
-    refreshMapperListButton = new JButton("🔄");
-    refreshMapperListButton.setMargin(new Insets(2,2,2,2));
-    refreshMapperListButton.setPreferredSize(new Dimension(28, 24));
-    refreshMapperListButton.setToolTipText("<html><b>Refresh Mapper List</b><br>Download latest authorized mappers from server</html>");
-    refreshMapperListButton.setFont(refreshMapperListButton.getFont().deriveFont(14f));
-    mapperPanel.add(refreshMapperListButton, mpGbc);
-    
-    panel.add(mapperPanel, gbc);
-    
-    // Add Date and Isolate controls on a new row under the mapper combo
-    gbc.gridx = 0;
-    gbc.gridy++;
-    gbc.gridwidth = 1;
-    gbc.fill = GridBagConstraints.NONE;
-    gbc.weightx = 0;
-    panel.add(new JLabel("Filter Date:"), gbc);
-    
-    // Date controls in a separate panel
-    JPanel dateIsolatePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-    
-    // instantiate a JDatePicker if the library is available in lib/, otherwise fall back to JTextField
-    try {
-        org.jdatepicker.impl.SqlDateModel model = new org.jdatepicker.impl.SqlDateModel();
-        java.util.Properties p = new java.util.Properties();
-        org.jdatepicker.impl.JDatePanelImpl datePanel = new org.jdatepicker.impl.JDatePanelImpl(model, p);
-        org.jdatepicker.impl.JDatePickerImpl picker = new org.jdatepicker.impl.JDatePickerImpl(datePanel, new org.jdatepicker.impl.DateComponentFormatter());
-        datePickerComponent = picker;
-    } catch (Throwable t) {
-        datePickerComponent = new JTextField(10);
-    }
-    
-    // keep date picker compact but slightly wider for better usability
-    if (datePickerComponent instanceof JComponent) {
-        ((JComponent) datePickerComponent).setPreferredSize(new Dimension(130, 24));
-    }
-    dateIsolatePanel.add(datePickerComponent);
-    
-    // isolate button right next to date picker
-    isolateButton = new JButton("🔍 Isolate Work");
-    isolateButton.setToolTipText("<html><b>Isolate mapper's buildings</b><br>Downloads and filters data for selected mapper and date</html>");
-    isolateButton.setPreferredSize(new Dimension(140, 26));
-    isolateButton.setFont(isolateButton.getFont().deriveFont(Font.BOLD));
-    dateIsolatePanel.add(isolateButton);
-    
-    gbc.gridx = 1;
-    gbc.gridwidth = 3;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    gbc.weightx = 1.0;
-    panel.add(dateIsolatePanel, gbc);
-
-        // wire refresh mapper list button
+        // Refresh button (compact)
+        mpGbc.gridx = 1;
+        mpGbc.weightx = 0;
+        mpGbc.fill = GridBagConstraints.NONE;
+        refreshMapperListButton = new JButton("🔄");
+        refreshMapperListButton.setMargin(new Insets(2, 2, 2, 2));
+        refreshMapperListButton.setPreferredSize(new Dimension(28, 24));
+        refreshMapperListButton.setToolTipText("<html><b>Refresh Mapper List</b><br>" +
+            "Download latest authorized mappers from server</html>");
+        refreshMapperListButton.setFont(refreshMapperListButton.getFont().deriveFont(14f));
+        mapperPanel.add(refreshMapperListButton, mpGbc);
+        
+        panel.add(mapperPanel, gbc);
+        gbc.gridy++;
+        
+        // Wire refresh button action
         refreshMapperListButton.addActionListener(e -> {
             setFetchingMappers(true);
             new Thread(() -> {
@@ -326,7 +315,9 @@ public class ValidationToolPanel extends ToggleDialog {
                         fetchStatusLabel.setText("Success: User list updated. Ready for validation.");
                         fetchStatusLabel.setBackground(new Color(0x88ff88));
                         updateSubmitButtonsEnabled();
-                        JOptionPane.showMessageDialog(null, "Authorized mapper list refreshed (" + authorizedMappers.size() + ")", "Mapper List", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(null, 
+                            "Authorized mapper list refreshed (" + authorizedMappers.size() + ")", 
+                            "Mapper List", JOptionPane.INFORMATION_MESSAGE);
                     });
                 } catch (Exception ex) {
                     Logging.error(ex);
@@ -334,17 +325,71 @@ public class ValidationToolPanel extends ToggleDialog {
                         fetchStatusLabel.setText("Error: Failed to fetch mapper list - " + ex.getMessage());
                         fetchStatusLabel.setBackground(new Color(0xffcccc));
                         updateSubmitButtonsEnabled();
-                        JOptionPane.showMessageDialog(null, "Failed to fetch mapper list: " + ex.getMessage(), "Mapper List Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(null, 
+                            "Failed to fetch mapper list: " + ex.getMessage(), 
+                            "Mapper List Error", JOptionPane.ERROR_MESSAGE);
                     });
                 } finally {
                     setFetchingMappers(false);
                 }
             }).start();
         });
-
-        // Total Buildings - note: after Date and Isolate row
+    }
+    
+    /**
+     * Setup date picker and isolate button section.
+     */
+    private void setupDateAndIsolateSection(JPanel panel, GridBagConstraints gbc) {
+        // Date label
         gbc.gridx = 0;
+        gbc.gridwidth = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        panel.add(new JLabel("Filter Date:"), gbc);
+        
+        // Date and Isolate controls panel
+        JPanel dateIsolatePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        
+        // Initialize date picker component
+        try {
+            org.jdatepicker.impl.SqlDateModel model = new org.jdatepicker.impl.SqlDateModel();
+            java.util.Properties p = new java.util.Properties();
+            org.jdatepicker.impl.JDatePanelImpl datePanel = 
+                new org.jdatepicker.impl.JDatePanelImpl(model, p);
+            org.jdatepicker.impl.JDatePickerImpl picker = 
+                new org.jdatepicker.impl.JDatePickerImpl(datePanel, 
+                    new org.jdatepicker.impl.DateComponentFormatter());
+            datePickerComponent = picker;
+        } catch (Throwable t) {
+            datePickerComponent = new JTextField(10);
+        }
+        
+        if (datePickerComponent instanceof JComponent) {
+            ((JComponent) datePickerComponent).setPreferredSize(new Dimension(130, 24));
+        }
+        dateIsolatePanel.add(datePickerComponent);
+        
+        // Isolate button
+        isolateButton = new JButton("🔍 Isolate Work");
+        isolateButton.setToolTipText("<html><b>Isolate mapper's buildings</b><br>" +
+            "Downloads and filters data for selected mapper and date</html>");
+        isolateButton.setPreferredSize(new Dimension(140, 26));
+        isolateButton.setFont(isolateButton.getFont().deriveFont(Font.BOLD));
+        dateIsolatePanel.add(isolateButton);
+        
+        gbc.gridx = 1;
+        gbc.gridwidth = 3;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        panel.add(dateIsolatePanel, gbc);
         gbc.gridy++;
+    }
+    
+    /**
+     * Setup total buildings field.
+     */
+    private void setupTotalBuildingsField(JPanel panel, GridBagConstraints gbc) {
+        gbc.gridx = 0;
         gbc.gridwidth = 1;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
@@ -357,83 +402,103 @@ public class ValidationToolPanel extends ToggleDialog {
         totalBuildingsField = new JTextField();
         totalBuildingsField.setEditable(false);
         panel.add(totalBuildingsField, gbc);
-        
-        // Separator
-        gbc.gridx = 0;
         gbc.gridy++;
+    }
+    
+    /**
+     * Setup error tracking section with all error type rows.
+     */
+    private void setupErrorTrackingSection(JPanel panel, GridBagConstraints gbc) {
+        // Separator before error section
+        gbc.gridx = 0;
         gbc.gridwidth = 3;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         panel.add(new JSeparator(), gbc);
+        gbc.gridy++;
 
-        // Error Rows
+        // Add all error rows
         for (int i = 0; i < errorTypes.length; i++) {
-            gbc.gridy++;
             addErrorRow(panel, gbc, errorTypes[i], i);
+            gbc.gridy++;
         }
 
-        // Separator
+        // Separator after error section
         gbc.gridx = 0;
-        gbc.gridy++;
         gbc.gridwidth = 3;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         panel.add(new JSeparator(), gbc);
-
-        // Comments
-        gbc.gridx = 0;
         gbc.gridy++;
+    }
+    
+    /**
+     * Setup validator comments section.
+     */
+    private void setupCommentsSection(JPanel panel, GridBagConstraints gbc) {
+        gbc.gridx = 0;
         gbc.gridwidth = 3;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         panel.add(new JLabel("Validator Comments:"), gbc);
-
         gbc.gridy++;
+
         gbc.fill = GridBagConstraints.BOTH;
-        gbc.weighty = 1.0; // Allow comments to grow vertically
+        gbc.weighty = 1.0;
         validatorCommentsArea = new JTextArea(5, 20);
         panel.add(new JScrollPane(validatorCommentsArea), gbc);
-        gbc.weighty = 0; // Reset for subsequent components
-
-    // Fetch status label + Authorization status label + Force Submit
-    gbc.gridx = 0;
-    gbc.gridy++;
-    gbc.gridwidth = 3;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    fetchStatusLabel = new JLabel("⏳ Loading user list...");
-    fetchStatusLabel.setOpaque(true);
-    fetchStatusLabel.setBackground(new Color(255, 243, 205)); // Soft amber
-    fetchStatusLabel.setForeground(new Color(102, 60, 0));
-    fetchStatusLabel.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(new Color(255, 200, 100), 1),
-        BorderFactory.createEmptyBorder(4, 8, 4, 8)
-    ));
-    fetchStatusLabel.setFont(fetchStatusLabel.getFont().deriveFont(12f));
-    panel.add(fetchStatusLabel, gbc);
-
-    gbc.gridy++;
-    authStatusLabel = new JLabel("🔒 Checking authorization...");
-    authStatusLabel.setOpaque(true);
-    authStatusLabel.setBackground(new Color(224, 224, 224)); // Light gray
-    authStatusLabel.setForeground(new Color(60, 60, 60));
-    authStatusLabel.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(new Color(180, 180, 180), 1),
-        BorderFactory.createEmptyBorder(4, 8, 4, 8)
-    ));
-    authStatusLabel.setFont(authStatusLabel.getFont().deriveFont(12f));
-    panel.add(authStatusLabel, gbc);
-
-        // v3.0 - Validation Preview Panel (collapsible)
-        gbc.gridx = 0;
+        gbc.weighty = 0;
         gbc.gridy++;
+    }
+    
+    /**
+     * Setup status labels (fetch status and authorization status).
+     */
+    private void setupStatusLabels(JPanel panel, GridBagConstraints gbc) {
+        gbc.gridx = 0;
+        gbc.gridwidth = 3;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        
+        // Fetch status label
+        fetchStatusLabel = new JLabel("⏳ Loading user list...");
+        fetchStatusLabel.setOpaque(true);
+        fetchStatusLabel.setBackground(new Color(255, 243, 205));
+        fetchStatusLabel.setForeground(new Color(102, 60, 0));
+        fetchStatusLabel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(255, 200, 100), 1),
+            BorderFactory.createEmptyBorder(4, 8, 4, 8)
+        ));
+        fetchStatusLabel.setFont(fetchStatusLabel.getFont().deriveFont(12f));
+        panel.add(fetchStatusLabel, gbc);
+        gbc.gridy++;
+
+        // Authorization status label
+        authStatusLabel = new JLabel("🔒 Checking authorization...");
+        authStatusLabel.setOpaque(true);
+        authStatusLabel.setBackground(new Color(224, 224, 224));
+        authStatusLabel.setForeground(new Color(60, 60, 60));
+        authStatusLabel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(180, 180, 180), 1),
+            BorderFactory.createEmptyBorder(4, 8, 4, 8)
+        ));
+        authStatusLabel.setFont(authStatusLabel.getFont().deriveFont(12f));
+        panel.add(authStatusLabel, gbc);
+        gbc.gridy++;
+    }
+    
+    /**
+     * Setup validation preview panel (collapsible).
+     */
+    private void setupValidationPreviewPanel(JPanel panel, GridBagConstraints gbc) {
+        gbc.gridx = 0;
         gbc.gridwidth = 3;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         
         validationPreviewPanel = new JPanel(new BorderLayout());
         validationPreviewPanel.setBorder(BorderFactory.createTitledBorder("📊 Validation Summary"));
-        validationPreviewPanel.setVisible(false); // Hidden by default
+        validationPreviewPanel.setVisible(false);
         
         previewTextArea = new JTextArea(8, 40);
         previewTextArea.setEditable(false);
         previewTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
-        previewTextArea.setBackground(new Color(250, 250, 255)); // Slightly blue tinted
+        previewTextArea.setBackground(new Color(250, 250, 255));
         previewTextArea.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(new Color(200, 200, 210), 1),
             BorderFactory.createEmptyBorder(5, 5, 5, 5)
@@ -441,7 +506,8 @@ public class ValidationToolPanel extends ToggleDialog {
         JScrollPane previewScroll = new JScrollPane(previewTextArea);
         
         JButton togglePreviewButton = new JButton("📊 Show Validation Summary");
-        togglePreviewButton.setToolTipText("<html><b>Toggle validation summary</b><br>Shows error breakdown and details before submitting</html>");
+        togglePreviewButton.setToolTipText("<html><b>Toggle validation summary</b><br>" +
+            "Shows error breakdown and details before submitting</html>");
         togglePreviewButton.setPreferredSize(new Dimension(200, 28));
         togglePreviewButton.setFont(togglePreviewButton.getFont().deriveFont(12f));
         togglePreviewButton.addActionListener(e -> {
@@ -463,43 +529,150 @@ public class ValidationToolPanel extends ToggleDialog {
         previewScroll.setVisible(false);
         
         panel.add(validationPreviewPanel, gbc);
+        gbc.gridy++;
+    }
+    
+    /**
+     * Setup action buttons (validate button).
+     */
+    private void setupActionButtons(JPanel panel, GridBagConstraints gbc) {
+        validateButton = new JButton("✅ Record Validation");
+        validateButton.setToolTipText("<html><b>Record this validation in DPW Manager</b><br>" +
+            "Logs the mapper's work with error counts and comments.<br>" +
+            "All work is recorded regardless of quality - you mark incomplete<br>" +
+            "tasks in HOT Tasking Manager for the mapper to fix later.</html>");
+        validateButton.setPreferredSize(new Dimension(180, 32));
+        validateButton.setFont(validateButton.getFont().deriveFont(Font.BOLD, 13f));
+        validateButton.setBackground(new Color(76, 175, 80));
+        validateButton.setForeground(Color.WHITE);
+        validateButton.setFocusPainted(false);
 
-        // Action Button - Record validation data
-        // v3.0.2: Removed Reject button - validators record all work as "Validated"
-        // and mark incomplete tasks in HOT Tasking Manager for mapper to fix
-    validateButton = new JButton("✅ Record Validation");
-    validateButton.setToolTipText("<html><b>Record this validation in DPW Manager</b><br>" +
-        "Logs the mapper's work with error counts and comments.<br>" +
-        "All work is recorded regardless of quality - you mark incomplete<br>" +
-        "tasks in HOT Tasking Manager for the mapper to fix later.</html>");
-    validateButton.setPreferredSize(new Dimension(180, 32));
-    validateButton.setFont(validateButton.getFont().deriveFont(Font.BOLD, 13f));
-    validateButton.setBackground(new Color(76, 175, 80)); // Green
-    validateButton.setForeground(Color.WHITE);
-    validateButton.setFocusPainted(false);
-
-    // Use a compact FlowLayout
-    JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-    actionPanel.add(validateButton);
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        actionPanel.add(validateButton);
 
         gbc.gridx = 0;
-        gbc.gridy++;
         gbc.gridwidth = 3;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         panel.add(actionPanel, gbc);
-
-        createLayout(panel, false, null);
-
+        
         // Action Listener - Record validation
         validateButton.addActionListener(e -> {
-            // v3.0.2 - All validations are recorded as "Validated"
-            // Validators mark incomplete tasks in HOT TM separately
             if (showConfirmationDialog("Validated")) {
                 submitData("Validated");
             }
         });
+        
+        // Wire isolate button action listener
+        setupIsolateButtonListener();
+        
+        // Disable submit buttons until Task ID is provided
+        validateButton.setEnabled(false);
+        taskIdField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private void update() {
+                updateSubmitButtonsEnabled();
+            }
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+        });
 
-        // Isolate action listener
+        // v3.1.0-BETA: TM URL auto-detection listener
+        if (PluginSettings.isTMIntegrationEnabled() && tmUrlField != null) {
+            tmUrlField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+                private void update() {
+                    handleTMUrlInput();
+                }
+                public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
+                public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
+                public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            });
+        }
+
+        mapperUsernameComboBox.addItemListener(e -> updateAuthStatus());
+    // when mapper selection changes, update the building count shown (mapper-specific)
+    mapperUsernameComboBox.addItemListener(e -> updateMapperBuildingCount());
+    // when mapper selection changes, auto-fill settlement from DPW data
+    mapperUsernameComboBox.addItemListener(e -> updateMapperSettlement());
+    }
+
+    private void setFetchingMappers(boolean fetching) {
+        isFetchingMappers = fetching;
+        SwingUtilities.invokeLater(() -> {
+            refreshMapperListButton.setEnabled(!fetching);
+            if (fetching) {
+                refreshMapperListButton.setToolTipText("Refreshing authorized mapper list...");
+            } else {
+                refreshMapperListButton.setToolTipText("Refresh authorized mapper list");
+            }
+            updateSubmitButtonsEnabled();
+        });
+    }
+
+    private void setSending(boolean sending) {
+        isSending = sending;
+        SwingUtilities.invokeLater(() -> {
+            validateButton.setEnabled(!sending && !taskIdField.getText().trim().isEmpty());
+            refreshMapperListButton.setEnabled(!sending && !isFetchingMappers);
+            if (sending) {
+                showSendingDialog();
+            } else {
+                hideSendingDialog();
+            }
+        });
+    }
+
+    private void showSendingDialog() {
+        if (sendingDialog != null && sendingDialog.isShowing()) return;
+        Frame owner = MainApplication.getMainFrame();
+        sendingDialog = new JDialog(owner, "Submitting...", false);
+        JPanel p = new JPanel(new BorderLayout(8,8));
+        p.setBorder(BorderFactory.createEmptyBorder(8,8,8,8));
+        JLabel l = new JLabel("Submitting data — please wait...");
+        JProgressBar bar = new JProgressBar();
+        bar.setIndeterminate(true);
+        p.add(l, BorderLayout.NORTH);
+        p.add(bar, BorderLayout.CENTER);
+        sendingDialog.getContentPane().add(p);
+        sendingDialog.pack();
+        sendingDialog.setLocationRelativeTo(owner);
+        sendingDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        sendingDialog.setModal(false);
+        sendingDialog.setVisible(true);
+    }
+
+    private void hideSendingDialog() {
+        if (sendingDialog != null) {
+            sendingDialog.setVisible(false);
+            sendingDialog.dispose();
+            sendingDialog = null;
+        }
+    }
+
+    private void updateAuthStatus() {
+        String sel = (String) mapperUsernameComboBox.getSelectedItem();
+        if (sel == null || sel.isEmpty()) {
+            authStatusLabel.setText("Mapper authorization: unknown");
+            authStatusLabel.setBackground(Color.LIGHT_GRAY);
+            return;
+        }
+        boolean authorized;
+        synchronized (mapperLock) {
+            authorized = authorizedMappers.contains(sel);
+        }
+        if (authorized) {
+            authStatusLabel.setText("Mapper authorization: AUTHORIZED");
+            authStatusLabel.setBackground(new Color(0x88ff88));
+        } else {
+            authStatusLabel.setText("Mapper authorization: UNAUTHORIZED");
+            authStatusLabel.setBackground(new Color(0xff8888));
+        }
+    }
+    
+    /**
+     * Setup the isolate button action listener.
+     * Handles mapper work isolation into dedicated validation layer.
+     */
+    private void setupIsolateButtonListener() {
         isolateButton.addActionListener(e -> {
             isolateButton.setEnabled(false);
             new Thread(() -> {
@@ -530,7 +703,7 @@ public class ValidationToolPanel extends ToggleDialog {
                     }
                     
                     // Check if current user is authorized for this project (case-insensitive)
-                    synchronized (authorizedMappers) {
+                    synchronized (mapperLock) {
                         if (!authorizedMappers.isEmpty()) {
                             final String validatorToCheck = currentValidator;
                             boolean isAuthorized = authorizedMappers.stream()
@@ -623,7 +796,8 @@ public class ValidationToolPanel extends ToggleDialog {
                             
                             // If we get here, the primitive passed both mapper and date filters
                             selected.add(p);
-                        } catch (Exception ignore) {
+                        } catch (Exception e) {
+                            Logging.debug("DPWValidationTool: Non-critical error processing primitive: " + e.getMessage());
                         }
                     }
                     if (selected.isEmpty()) {
@@ -657,7 +831,8 @@ public class ValidationToolPanel extends ToggleDialog {
                                     existingNodeIds.add(uid);
                                 }
                             }
-                        } catch (Exception ignore) {
+                        } catch (Exception e) {
+                            Logging.debug("DPWValidationTool: Non-critical error processing way nodes: " + e.getMessage());
                         }
                     }
                     // Log IDs and dataset presence for diagnostics before cloning
@@ -667,7 +842,8 @@ public class ValidationToolPanel extends ToggleDialog {
                             long id = p.getId();
                             boolean hasDs = p.getDataSet() != null;
                             ids.append(String.format("[type=%s id=%d dataset=%s] ", p.getClass().getSimpleName(), id, hasDs ? "yes" : "no"));
-                        } catch (Exception ignore) {
+                        } catch (Exception e) {
+                            Logging.debug("DPWValidationTool: Error logging primitive info: " + e.getMessage());
                         }
                     }
                     Logging.info("DPWValidationTool: primitives before clone: " + ids.toString());
@@ -718,108 +894,6 @@ public class ValidationToolPanel extends ToggleDialog {
                 }
             }).start();
         });
-
-        // Disable submit buttons until Task ID is provided
-        validateButton.setEnabled(false);
-        taskIdField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            private void update() {
-                updateSubmitButtonsEnabled();
-            }
-            public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
-            public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
-            public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
-        });
-
-        // v3.1.0-BETA: TM URL auto-detection listener
-        if (PluginSettings.isTMIntegrationEnabled() && tmUrlField != null) {
-            tmUrlField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-                private void update() {
-                    handleTMUrlInput();
-                }
-                public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
-                public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
-                public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
-            });
-        }
-
-        mapperUsernameComboBox.addItemListener(e -> updateAuthStatus());
-    // when mapper selection changes, update the building count shown (mapper-specific)
-    mapperUsernameComboBox.addItemListener(e -> updateMapperBuildingCount());
-    // when mapper selection changes, auto-fill settlement from DPW data
-    mapperUsernameComboBox.addItemListener(e -> updateMapperSettlement());
-    }
-
-    private void setFetchingMappers(boolean fetching) {
-        isFetchingMappers = fetching;
-        SwingUtilities.invokeLater(() -> {
-            refreshMapperListButton.setEnabled(!fetching);
-            if (fetching) {
-                refreshMapperListButton.setToolTipText("Refreshing authorized mapper list...");
-            } else {
-                refreshMapperListButton.setToolTipText("Refresh authorized mapper list");
-            }
-            updateSubmitButtonsEnabled();
-        });
-    }
-
-    private void setSending(boolean sending) {
-        isSending = sending;
-        SwingUtilities.invokeLater(() -> {
-            validateButton.setEnabled(!sending && !taskIdField.getText().trim().isEmpty());
-            refreshMapperListButton.setEnabled(!sending && !isFetchingMappers);
-            if (sending) {
-                showSendingDialog();
-            } else {
-                hideSendingDialog();
-            }
-        });
-    }
-
-    private void showSendingDialog() {
-        if (sendingDialog != null && sendingDialog.isShowing()) return;
-        Frame owner = MainApplication.getMainFrame();
-        sendingDialog = new JDialog(owner, "Submitting...", false);
-        JPanel p = new JPanel(new BorderLayout(8,8));
-        p.setBorder(BorderFactory.createEmptyBorder(8,8,8,8));
-        JLabel l = new JLabel("Submitting data — please wait...");
-        JProgressBar bar = new JProgressBar();
-        bar.setIndeterminate(true);
-        p.add(l, BorderLayout.NORTH);
-        p.add(bar, BorderLayout.CENTER);
-        sendingDialog.getContentPane().add(p);
-        sendingDialog.pack();
-        sendingDialog.setLocationRelativeTo(owner);
-        sendingDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-        sendingDialog.setModal(false);
-        sendingDialog.setVisible(true);
-    }
-
-    private void hideSendingDialog() {
-        if (sendingDialog != null) {
-            sendingDialog.setVisible(false);
-            sendingDialog.dispose();
-            sendingDialog = null;
-        }
-    }
-
-    private void updateAuthStatus() {
-        String sel = (String) mapperUsernameComboBox.getSelectedItem();
-        if (sel == null || sel.isEmpty()) {
-            authStatusLabel.setText("Mapper authorization: unknown");
-            authStatusLabel.setBackground(Color.LIGHT_GRAY);
-            return;
-        }
-        boolean authorized;
-        synchronized (authorizedMappers) {
-            authorized = authorizedMappers.contains(sel);
-        }
-        if (authorized) {
-            authStatusLabel.setText("Mapper authorization: AUTHORIZED");
-            authStatusLabel.setBackground(new Color(0x88ff88));
-        } else {
-            authStatusLabel.setText("Mapper authorization: UNAUTHORIZED");
-            authStatusLabel.setBackground(new Color(0xff8888));
-        }
     }
 
     private void addErrorRow(JPanel panel, GridBagConstraints gbc, String labelText, final int index) {
@@ -921,7 +995,8 @@ public class ValidationToolPanel extends ToggleDialog {
                 if (u != null && mapper.equals(u.getName())) {
                     count++;
                 }
-            } catch (Exception ignore) {
+            } catch (Exception e) {
+                Logging.debug("DPWValidationTool: Error counting primitives for mapper: " + e.getMessage());
             }
         }
         return count;
@@ -963,7 +1038,7 @@ public class ValidationToolPanel extends ToggleDialog {
             
             // Look up settlement for this mapper (case-insensitive)
             String settlement = null;
-            synchronized (mapperSettlements) {
+            synchronized (settlementLock) {
                 for (Map.Entry<String, String> entry : mapperSettlements.entrySet()) {
                     if (entry.getKey().equalsIgnoreCase(selectedMapper)) {
                         settlement = entry.getValue();
@@ -991,14 +1066,14 @@ public class ValidationToolPanel extends ToggleDialog {
                 ((now - cacheTimestamp) / 1000) + "s)");
             
             // Use cached data
-            synchronized (authorizedMappers) {
+            synchronized (mapperLock) {
                 authorizedMappers.clear();
                 authorizedMappers.addAll(cachedUserList.stream()
                     .map(u -> u.osmUsername)
                     .collect(java.util.stream.Collectors.toList()));
             }
             
-            synchronized (mapperSettlements) {
+            synchronized (settlementLock) {
                 mapperSettlements.clear();
                 for (UserInfo user : cachedUserList) {
                     mapperSettlements.put(user.osmUsername, user.settlement);
@@ -1059,7 +1134,9 @@ public class ValidationToolPanel extends ToggleDialog {
                 if (remaining < 10) {
                     Logging.warn("DPWValidationTool: API rate limit nearly reached: " + remaining + " requests remaining");
                 }
-            } catch (NumberFormatException ignore) {}
+            } catch (NumberFormatException e) {
+                Logging.warn("DPWValidationTool: Invalid rate limit header value: " + rateLimitRemaining + " - " + e.getMessage());
+            }
         }
         
         // Read response body
@@ -1081,7 +1158,9 @@ public class ValidationToolPanel extends ToggleDialog {
                 if (errorMatcher.find()) {
                     errorMsg = errorMatcher.group(1);
                 }
-            } catch (Exception ignore) {}
+            } catch (Exception e) {
+                Logging.debug("DPWValidationTool: Could not parse error message from response: " + e.getMessage());
+            }
             throw new IllegalStateException("User list API returned error: " + errorMsg);
         }
 
@@ -1103,7 +1182,8 @@ public class ValidationToolPanel extends ToggleDialog {
         // persist the used base URL so users don't have to set it manually
         try {
             Preferences.main().put("dpw.api_base_url", apiBaseUrl);
-        } catch (Exception ignore) {
+        } catch (Exception e) {
+            Logging.debug("DPWValidationTool: Could not save API base URL to preferences: " + e.getMessage());
         }
 
         // Extract usernames and build settlement mapping
@@ -1120,12 +1200,12 @@ public class ValidationToolPanel extends ToggleDialog {
         Logging.info("DPWValidationTool: Cached " + userInfoList.size() + " users for 5 minutes");
 
         // replace authorizedMappers and mapperSettlements atomically
-        synchronized (authorizedMappers) {
+        synchronized (mapperLock) {
             authorizedMappers.clear();
             authorizedMappers.addAll(usernames);
         }
         
-        synchronized (mapperSettlements) {
+        synchronized (settlementLock) {
             mapperSettlements.clear();
             mapperSettlements.putAll(settlements);
         }
@@ -1696,9 +1776,14 @@ public class ValidationToolPanel extends ToggleDialog {
                 Matcher matcher = userIdPattern.matcher(responseBody);
                 
                 if (matcher.find()) {
-                    int userId = Integer.parseInt(matcher.group(1));
-                    Logging.info("DPWValidationTool: Found user_id=" + userId + " for " + osmUsername);
-                    return userId;
+                    try {
+                        int userId = Integer.parseInt(matcher.group(1));
+                        Logging.info("DPWValidationTool: Found user_id=" + userId + " for " + osmUsername);
+                        return userId;
+                    } catch (NumberFormatException e) {
+                        Logging.warn("DPWValidationTool: Invalid user_id format in response: " + matcher.group(1));
+                        return -1;
+                    }
                 } else {
                     Logging.warn("DPWValidationTool: No user_id found in response for " + osmUsername);
                     return -1;
@@ -2454,7 +2539,7 @@ public class ValidationToolPanel extends ToggleDialog {
             return;
         }
 
-        synchronized (authorizedMappers) {
+        synchronized (mapperLock) {
             if (authorizedMappers.isEmpty()) {
                 SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
                         "Submission Failed: The list of authorized project members has not been loaded. Please click 'Refresh Mapper List' and try again.",
@@ -2491,7 +2576,7 @@ public class ValidationToolPanel extends ToggleDialog {
         final String finalMapperUsername = mapperUsername; // Make effectively final for lambda
         
         // Client-side authorization check: ensure mapper is in authorized list (case-insensitive)
-        synchronized (authorizedMappers) {
+        synchronized (mapperLock) {
             if (!authorizedMappers.isEmpty()) {
                 boolean mapperAuthorized = authorizedMappers.stream()
                     .anyMatch(user -> user.equalsIgnoreCase(finalMapperUsername));
@@ -2566,12 +2651,13 @@ public class ValidationToolPanel extends ToggleDialog {
             String baseUrl = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
             String apiUrl = baseUrl + "/api/validation-log";
             
+            HttpURLConnection conn = null;
             try {
                 Logging.info("DPWValidationTool: Submitting validation data to " + apiUrl);
                 Logging.debug("DPWValidationTool: JSON payload: " + jsonData);
                 
                 URL url = new URI(apiUrl).toURL();
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setRequestProperty("Accept", "application/json");
@@ -2731,6 +2817,14 @@ public class ValidationToolPanel extends ToggleDialog {
                         JOptionPane.ERROR_MESSAGE);
                 });
             } finally {
+                // Critical: Always close HTTP connection to prevent resource leak
+                if (conn != null) {
+                    try {
+                        conn.disconnect();
+                    } catch (Exception e) {
+                        Logging.debug("DPWValidationTool: Error disconnecting HTTP connection: " + e.getMessage());
+                    }
+                }
                 setSending(false);
             }
         }).start();
@@ -2768,7 +2862,7 @@ public class ValidationToolPanel extends ToggleDialog {
         SwingUtilities.invokeLater(() -> {
             boolean hasTaskId = taskIdField != null && !taskIdField.getText().trim().isEmpty();
             boolean mapperListLoaded;
-            synchronized (authorizedMappers) {
+            synchronized (mapperLock) {
                 mapperListLoaded = !authorizedMappers.isEmpty();
             }
             boolean enable = hasTaskId && mapperListLoaded && !isSending;
@@ -2844,10 +2938,84 @@ public class ValidationToolPanel extends ToggleDialog {
                     try {
                         java.lang.reflect.Method setIcon = titleBar.getClass().getMethod("setIcon", javax.swing.Icon.class);
                         setIcon.invoke(titleBar, icon);
-                    } catch (NoSuchMethodException ignored) {}
+                    } catch (NoSuchMethodException e) {
+                        Logging.debug("DPWValidationTool: setIcon method not found on titleBar: " + e.getMessage());
+                    }
                 }
-            } catch (NoSuchFieldException ignored) {}
+            } catch (NoSuchFieldException e) {
+                Logging.debug("DPWValidationTool: titleBar field not found in ToggleDialog: " + e.getMessage());
+            }
         } catch (Exception e) {
+            Logging.trace(e);
+        }
+    }
+
+    /**
+     * Refresh the dialog title with current version.
+     * Called after plugin updates to display new version number.
+     * 
+     * Note: This is a best-effort fix using reflection since JOSM's ToggleDialog
+     * doesn't expose a public setTitle() method. The proper fix requires JOSM restart.
+     * 
+     * @since 3.0.6
+     */
+    public void refreshTitle() {
+        String newTitle = I18n.tr("DPW Validation Tool v" + UpdateChecker.CURRENT_VERSION);
+        Logging.info("DPWValidationTool: Refreshing title to: " + newTitle);
+        
+        try {
+            // Attempt 1: Try to access and update the title field directly
+            Class<?> parent = getClass().getSuperclass(); // ToggleDialog.class
+            
+            try {
+                java.lang.reflect.Field titleField = parent.getDeclaredField("title");
+                titleField.setAccessible(true);
+                titleField.set(this, newTitle);
+                Logging.info("DPWValidationTool: Title field updated successfully");
+            } catch (NoSuchFieldException e) {
+                Logging.warn("DPWValidationTool: 'title' field not found in ToggleDialog");
+            }
+            
+            // Attempt 2: Try to update the TitleBar component (if accessible)
+            try {
+                java.lang.reflect.Field titleBarField = parent.getDeclaredField("titleBar");
+                titleBarField.setAccessible(true);
+                Object titleBar = titleBarField.get(this);
+                
+                if (titleBar != null) {
+                    // Try various methods that might exist
+                    java.lang.reflect.Method[] methods = titleBar.getClass().getMethods();
+                    
+                    // Look for setTitle, setText, or similar methods
+                    for (java.lang.reflect.Method method : methods) {
+                        if (method.getName().equals("setTitle") || method.getName().equals("setText")) {
+                            if (method.getParameterCount() == 1 && 
+                                method.getParameterTypes()[0].equals(String.class)) {
+                                method.invoke(titleBar, newTitle);
+                                Logging.info("DPWValidationTool: TitleBar updated via " + method.getName());
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Force repaint of title bar
+                    if (titleBar instanceof java.awt.Component) {
+                        ((java.awt.Component) titleBar).revalidate();
+                        ((java.awt.Component) titleBar).repaint();
+                    }
+                }
+            } catch (NoSuchFieldException e) {
+                Logging.warn("DPWValidationTool: 'titleBar' field not found in ToggleDialog");
+            }
+            
+            // Force repaint of entire dialog
+            revalidate();
+            repaint();
+            
+            Logging.info("DPWValidationTool: Title refresh complete");
+            
+        } catch (Exception e) {
+            Logging.warn("DPWValidationTool: Could not refresh dialog title: " + e.getMessage());
             Logging.trace(e);
         }
     }
@@ -2883,7 +3051,9 @@ public class ValidationToolPanel extends ToggleDialog {
                             java.lang.reflect.Method getValue = model.getClass().getMethod("getValue");
                             Object val = getValue.invoke(model);
                             if (val != null) return val.toString();
-                        } catch (NoSuchMethodException ignored) {}
+                        } catch (NoSuchMethodException e) {
+                            Logging.debug("DPWValidationTool: getValue method not found on date model: " + e.getMessage());
+                        }
                         // try year/month/day getters
                         try {
                             java.lang.reflect.Method getYear = model.getClass().getMethod("getYear");
@@ -2898,9 +3068,13 @@ public class ValidationToolPanel extends ToggleDialog {
                                 int day = Integer.parseInt(d.toString());
                                 return String.format("%04d-%02d-%02d", year, month, day);
                             }
-                        } catch (NoSuchMethodException ignored) {}
+                        } catch (NoSuchMethodException e) {
+                            Logging.debug("DPWValidationTool: Year/month/day getters not found on date model: " + e.getMessage());
+                        }
                     }
-                } catch (NoSuchMethodException ignored) {}
+                } catch (NoSuchMethodException e) {
+                    Logging.debug("DPWValidationTool: getModel method not found on date picker: " + e.getMessage());
+                }
             }
         } catch (Exception e) {
             Logging.trace(e);

@@ -59,16 +59,25 @@ public class UpdateChecker {
                         null,
                         "<html><b>DPW Validation Tool Updated!</b><br><br>"
                             + "The plugin has been successfully updated.<br>"
-                            + "New version is now active.</html>",
-                        "Update Complete",
-                        JOptionPane.INFORMATION_MESSAGE
-                    );
-                });
+                        + "New version is now active.<br><br>"
+                        + "<i>Note: Restart JOSM for full update.</i></html>",
+                    "Update Complete",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
                 
-                // Delete backup after success
-                Files.deleteIfExists(backupFile);
-            }
-        } catch (Exception e) {
+                // Attempt to refresh title in existing panel
+                try {
+                    DPWValidationToolPlugin plugin = DPWValidationToolPlugin.getInstance();
+                    if (plugin != null) {
+                        ValidationToolPanel panel = plugin.getValidationToolPanel();
+                        if (panel != null) {
+                            Logging.info("UpdateChecker: Refreshing panel title after update");
+                            panel.refreshTitle();
+                        }
+                    }
+                } catch (Exception e) {
+                    Logging.warn("UpdateChecker: Could not refresh panel title: " + e.getMessage());
+                }
             Logging.error("UpdateChecker: Failed to apply pending update: " + e.getMessage());
             e.printStackTrace();
         }
