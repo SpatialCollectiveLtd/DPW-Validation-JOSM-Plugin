@@ -95,6 +95,14 @@ public class ValidationToolPanel extends ToggleDialog {
     
     private volatile long lastMapperFetchTime = 0;
     private static final long MAPPER_FETCH_COOLDOWN = 10000; // 10 seconds between fetches to prevent 429 errors
+    
+    // v3.1.1 - Rate limiting for validation submissions
+    private volatile long lastSubmissionTime = 0;
+    private static final long SUBMISSION_COOLDOWN = 3000; // 3 seconds between submissions
+    private volatile int submissionRetryCount = 0;
+    private static final int MAX_SUBMISSION_RETRIES = 3;
+    private String pendingValidationStatus = null; // Store for retry
+    
     private JDialog sendingDialog;
     private boolean submittedThisSession = false;
     
@@ -2503,6 +2511,20 @@ public class ValidationToolPanel extends ToggleDialog {
     }
 
     private void submitData(String validationStatus) {
+        // v3.1.1 - Store for retry logic
+        pendingValidationStatus = validationStatus;
+        
+        // v3.1.1 - Rate limiting check
+        long now = System.currentTimeMillis();
+        if (now - lastSubmissionTime < SUBMISSION_COOLDOWN) {
+            long waitTime = (SUBMISSION_COOLDOWN - (now - lastSubmissionTime)) / 1000;
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                "Please wait " + (waitTime + 1) + " seconds before submitting again.\n\n" +
+                "This prevents server overload and ensures all submissions are processed correctly.",
+                "Please Wait", JOptionPane.WARNING_MESSAGE));
+            return;
+        }
+        
         // Validate all inputs before proceeding
         if (!validateInputs()) {
             return; // validateInputs() shows error dialog
@@ -2678,6 +2700,9 @@ public class ValidationToolPanel extends ToggleDialog {
                 // Handle different response codes according to API spec
                 if (responseCode == 201) {
                     // Success: 201 Created
+                    lastSubmissionTime = System.currentTimeMillis(); // v3.1.1 - Update rate limit timestamp
+                    submissionRetryCount = 0; // v3.1.1 - Reset retry counter
+                    
                     try {
                         // Parse success response to extract log_id and names
                         Pattern logIdPattern = Pattern.compile("\"log_id\"\\s*:\\s*(\\d+)");
@@ -2763,6 +2788,61 @@ public class ValidationToolPanel extends ToggleDialog {
                         JOptionPane.showMessageDialog(null, userMsg, "User Not Found", 
                             JOptionPane.ERROR_MESSAGE);
                     });
+                    
+                } else if (responseCode == 429) {
+                    // v3.1.1 - Rate Limit Exceeded: Too Many Requests
+                    String retryAfter = conn.getHeaderField("Retry-After");
+                    int retrySeconds = 5; // default
+                    try {
+                        if (retryAfter != null) {
+                            retrySeconds = Integer.parseInt(retryAfter);
+                        }
+                    } catch (NumberFormatException e) {
+                        Logging.debug("Could not parse Retry-After header: " + retryAfter);
+                    }
+                    
+                    Logging.warn("DPWValidationTool: 429 Rate Limit Exceeded - retry in " + retrySeconds + "s");
+                    
+                    // Attempt automatic retry with exponential backoff
+                    if (submissionRetryCount < MAX_SUBMISSION_RETRIES) {
+                        submissionRetryCount++;
+                        int backoffDelay = retrySeconds * 1000 * submissionRetryCount; // exponential backoff
+                        
+                        SwingUtilities.invokeLater(() -> {
+                            JOptionPane.showMessageDialog(null,
+                                "⏳ Server is busy (Rate Limit)\n\n" +
+                                "Automatically retrying in " + (backoffDelay/1000) + " seconds...\n" +
+                                "(Attempt " + submissionRetryCount + " of " + MAX_SUBMISSION_RETRIES + ")\n\n" +
+                                "Please be patient - your data will be submitted.",
+                                "Rate Limit - Auto Retry",
+                                JOptionPane.WARNING_MESSAGE);
+                        });
+                        
+                        // Schedule retry
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(backoffDelay);
+                                Logging.info("DPWValidationTool: Retrying submission after rate limit backoff");
+                                submitData(pendingValidationStatus);
+                            } catch (InterruptedException ie) {
+                                Logging.error("Retry interrupted: " + ie.getMessage());
+                            }
+                        }).start();
+                        
+                    } else {
+                        // Max retries exceeded
+                        submissionRetryCount = 0;
+                        SwingUtilities.invokeLater(() -> {
+                            JOptionPane.showMessageDialog(null,
+                                "❌ Rate Limit Exceeded\n\n" +
+                                "The server is experiencing high traffic.\n" +
+                                "Maximum retry attempts (" + MAX_SUBMISSION_RETRIES + ") reached.\n\n" +
+                                "Please wait a few minutes and try submitting again.\n\n" +
+                                "Your validation data has NOT been lost - it's still in the form.",
+                                "Rate Limit Error",
+                                JOptionPane.ERROR_MESSAGE);
+                        });
+                    }
                     
                 } else if (responseCode >= 500) {
                     // Server Error
