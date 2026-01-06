@@ -85,13 +85,11 @@ public class ValidationToolPanel extends ToggleDialog {
     private JButton isolateButton;
     private volatile boolean isSending = false;
     private volatile boolean isFetchingMappers = false;
-    // API key for DPW Manager API (provided by DPW team - Nov 27, 2025)
-    private static final String DPW_API_KEY = "dpw_josm_plugin_digitization_2025_secure_key_f8a9b2c3d1e4";
     
-    // User list caching (5 minutes as recommended by DPW team)
+    // User list caching (5 minutes)
     private static List<UserInfo> cachedUserList = null;
     private static long cacheTimestamp = 0;
-    private static final long CACHE_DURATION = 300000; // 5 minutes (matches server Cache-Control)
+    private static final long CACHE_DURATION = 300000; // 5 minutes
     
     private volatile long lastMapperFetchTime = 0;
     private static final long MAPPER_FETCH_COOLDOWN = 10000; // 10 seconds between fetches to prevent 429 errors
@@ -558,6 +556,8 @@ public class ValidationToolPanel extends ToggleDialog {
         taskIdField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             private void update() {
                 updateSubmitButtonsEnabled();
+                // Fetch mapper info when Task ID is manually entered
+                fetchMapperFromTaskId();
             }
             public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
             public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
@@ -1103,8 +1103,7 @@ public class ValidationToolPanel extends ToggleDialog {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Accept", "application/json");
-        conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.1.0-BETA (JOSM Validation Tool)");
-        conn.setRequestProperty("X-API-Key", DPW_API_KEY); // API key authentication (Nov 27, 2025)
+        conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.0");
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(10000);
 
@@ -1735,7 +1734,7 @@ public class ValidationToolPanel extends ToggleDialog {
         }
         
         try {
-            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
+            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://app.spatialcollective.com");
             String encodedUsername = URLEncoder.encode(osmUsername, StandardCharsets.UTF_8.toString());
             String apiUrl = baseUrl + "/api/users?osm_username=" + encodedUsername + "&exclude_managers=true";
             
@@ -1809,7 +1808,7 @@ public class ValidationToolPanel extends ToggleDialog {
     private String uploadToCloud(java.io.File file, int validationLogId, int mapperUserId, 
                                    int validatorUserId, String taskId, String settlement) {
         try {
-            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
+            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://app.spatialcollective.com");
             String apiUrl = baseUrl + "/api/osm-uploads";
             
             Logging.info("DPWValidationTool: Uploading to cloud: " + file.getName());
@@ -2655,8 +2654,8 @@ public class ValidationToolPanel extends ToggleDialog {
         new Thread(() -> {
             setSending(true);
             
-            // v2.1: Use Vercel-hosted DPW Manager API
-            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
+            // v3.2: Use production DPW Manager API at app.spatialcollective.com
+            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://app.spatialcollective.com");
             String apiUrl = baseUrl + "/api/validation-log";
             
             HttpURLConnection conn = null;
@@ -2669,7 +2668,7 @@ public class ValidationToolPanel extends ToggleDialog {
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setRequestProperty("Accept", "application/json");
-                conn.setRequestProperty("X-API-Key", DPW_API_KEY); // CRITICAL: API key authentication
+                conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.0");
                 conn.setDoOutput(true);
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(15000);
@@ -3290,6 +3289,53 @@ public class ValidationToolPanel extends ToggleDialog {
 
         } catch (Exception e) {
             Logging.error("TM remote control detection error: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Fetch mapper info when Task ID is manually entered
+     */
+    private void fetchMapperFromTaskId() {
+        if (!PluginSettings.isTMIntegrationEnabled()) {
+            return;
+        }
+        
+        String taskIdText = taskIdField.getText().trim();
+        if (taskIdText.isEmpty()) {
+            return;
+        }
+        
+        try {
+            // Parse task ID in format: projectId-taskId (e.g., "12345-67")
+            String[] parts = taskIdText.split("-");
+            if (parts.length != 2) {
+                return; // Invalid format
+            }
+            
+            int projectId = Integer.parseInt(parts[0]);
+            int taskId = Integer.parseInt(parts[1]);
+            
+            // Fetch mapper info in background
+            new Thread(() -> {
+                TaskManagerAPIClient.TaskInfo info = TaskManagerAPIClient.fetchTaskInfo(projectId, taskId);
+                
+                SwingUtilities.invokeLater(() -> {
+                    if (info.success && info.mapperUsername != null && !info.mapperUsername.isEmpty()) {
+                        selectMapperInComboBox(info.mapperUsername);
+                        
+                        if (PluginSettings.isAutoFetchSettlement()) {
+                            updateMapperSettlement();
+                        }
+                        
+                        Logging.info("TM integration: Auto-populated mapper '" + info.mapperUsername + "' for task " + taskId);
+                    }
+                });
+            }).start();
+            
+        } catch (NumberFormatException e) {
+            // Invalid task ID format - ignore silently
+        } catch (Exception e) {
+            Logging.error("Error fetching mapper from Task ID: " + e.getMessage());
         }
     }
 

@@ -24,9 +24,6 @@ import java.util.regex.Pattern;
  */
 public class DPWAPIClient {
     
-    // API Configuration (temporary - will be replaced with OAuth2 in future versions)
-    private static final String DPW_API_KEY = "d-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEyMyIsImlhdCI6MTcwMDAwMDAwMH0.l9GmKmD1rB5vEQ4Pz8yNwKxJdH9T7sL5cRqOmFkXz8A";
-    
     private final String baseUrl;
     
     /**
@@ -155,8 +152,7 @@ public class DPWAPIClient {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.0.6 (JOSM Validation Tool)");
-            conn.setRequestProperty("X-API-Key", DPW_API_KEY);
+            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.0");
             conn.setConnectTimeout(ValidationConstants.CONNECTION_TIMEOUT_MS);
             conn.setReadTimeout(ValidationConstants.READ_TIMEOUT_MS);
             
@@ -252,7 +248,7 @@ public class DPWAPIClient {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("X-API-Key", DPW_API_KEY); // CRITICAL: API key authentication
+            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.0");
             conn.setDoOutput(true);
             conn.setConnectTimeout(15000);
             conn.setReadTimeout(15000);
@@ -338,7 +334,7 @@ public class DPWAPIClient {
             // Multipart form data
             String boundary = "----DPWBoundary" + System.currentTimeMillis();
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-            conn.setRequestProperty("X-API-Key", DPW_API_KEY); // CRITICAL: API key authentication
+            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.0");
             
             try (OutputStream os = conn.getOutputStream();
                  OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
