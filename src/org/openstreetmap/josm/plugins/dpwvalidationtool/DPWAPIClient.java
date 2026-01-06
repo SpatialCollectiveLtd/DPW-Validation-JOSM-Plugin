@@ -191,7 +191,7 @@ public class DPWAPIClient {
         
         try {
             String encodedUsername = URLEncoder.encode(osmUsername, StandardCharsets.UTF_8.toString());
-            String apiUrl = baseUrl + "/api/users?osm_username=" + encodedUsername + "&exclude_managers=true";
+            String apiUrl = baseUrl + "/users?osm_username=" + encodedUsername + "&exclude_managers=true";
             
             Logging.debug("DPWValidationTool: Fetching user_id for: " + osmUsername);
             
@@ -238,7 +238,7 @@ public class DPWAPIClient {
      * @throws IOException if network error occurs
      */
     public ValidationSubmissionResult submitValidation(String jsonData) throws IOException {
-        String apiUrl = baseUrl + "/api/validation-log";
+        String apiUrl = baseUrl + "/validation-log";
         
         try {
             Logging.info("DPWValidationTool: Submitting validation data to " + apiUrl);
@@ -322,7 +322,7 @@ public class DPWAPIClient {
     public CloudUploadResult uploadToCloud(File file, int validationLogId, int mapperUserId,
                                            int validatorUserId, String taskId, String settlement) {
         try {
-            String apiUrl = baseUrl + "/api/upload-osm";
+            String apiUrl = baseUrl + "/osm-uploads";
             
             Logging.info("DPWValidationTool: Uploading to cloud: " + file.getName());
             

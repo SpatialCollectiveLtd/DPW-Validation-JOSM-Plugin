@@ -1724,9 +1724,9 @@ public class ValidationToolPanel extends ToggleDialog {
         }
         
         try {
-            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://app.spatialcollective.com");
+            String baseUrl = PluginSettings.getDPWApiBaseUrl();
             String encodedUsername = URLEncoder.encode(osmUsername, StandardCharsets.UTF_8.toString());
-            String apiUrl = baseUrl + "/api/users?osm_username=" + encodedUsername + "&exclude_managers=true";
+            String apiUrl = baseUrl + "/users?osm_username=" + encodedUsername + "&exclude_managers=true";
             
             Logging.debug("DPWValidationTool: Fetching user_id for: " + osmUsername);
             
@@ -1800,8 +1800,8 @@ public class ValidationToolPanel extends ToggleDialog {
     private String uploadToCloud(java.io.File file, int validationLogId, int mapperUserId, 
                                    int validatorUserId, String taskId, String settlement) {
         try {
-            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://app.spatialcollective.com");
-            String apiUrl = baseUrl + "/api/osm-uploads";
+            String baseUrl = PluginSettings.getDPWApiBaseUrl();
+            String apiUrl = baseUrl + "/osm-uploads";
             
             Logging.info("DPWValidationTool: Uploading to cloud: " + file.getName());
             
@@ -2647,8 +2647,8 @@ public class ValidationToolPanel extends ToggleDialog {
             setSending(true);
             
             // v3.2: Use production DPW Manager API at app.spatialcollective.com
-            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://app.spatialcollective.com");
-            String apiUrl = baseUrl + "/api/validation-log";
+            String baseUrl = PluginSettings.getDPWApiBaseUrl();
+            String apiUrl = baseUrl + "/validation-log";
             
             HttpURLConnection conn = null;
             try {
