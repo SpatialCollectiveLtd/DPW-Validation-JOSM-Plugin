@@ -24,10 +24,12 @@ public class PluginSettings {
     private static final String PREF_CACHE_EXPIRY_HOURS = PREFIX + "cache-expiry-hours";
     private static final String DEFAULT_PROJECT_URL = PREFIX + "default-project-url";
     private static final String DEFAULT_PROJECT_ID = PREFIX + "default-project-id";
+    private static final String DPW_API_KEY = PREFIX + "dpw-api-key";
     
     // Default values
-    // v3.2.7: GitHub Pages for zero rate limits (no Vercel DDoS protection)
-    private static final String DEFAULT_DPW_API_URL = "https://spatialcollectiveltd.github.io/api";
+    // v3.2.8: Vercel with API key authentication (required as of Jan 6, 2026)
+    private static final String DEFAULT_DPW_API_URL = "https://app.spatialcollective.com/api";
+    private static final String DEFAULT_API_KEY = "dpw-josm-plugin-2025-secure-key";
     private static final String DEFAULT_TM_API_URL = "https://tasking-manager-tm4-production-api.hotosm.org/api/v2";
     
     /**
@@ -58,6 +60,22 @@ public class PluginSettings {
      */
     public static void setDPWApiBaseUrl(String url) {
         Config.getPref().put(DPW_API_BASE_URL, url);
+    }
+    
+    /**
+     * Get DPW API key
+     * Default: dpw-josm-plugin-2025-secure-key
+     * v3.2.8: Required for all API requests
+     */
+    public static String getDPWApiKey() {
+        return Config.getPref().get(DPW_API_KEY, DEFAULT_API_KEY);
+    }
+    
+    /**
+     * Set DPW API key
+     */
+    public static void setDPWApiKey(String apiKey) {
+        Config.getPref().put(DPW_API_KEY, apiKey);
     }
     
     /**

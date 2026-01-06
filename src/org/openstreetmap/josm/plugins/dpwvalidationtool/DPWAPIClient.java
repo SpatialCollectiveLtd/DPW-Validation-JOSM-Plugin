@@ -142,9 +142,9 @@ public class DPWAPIClient {
      * @throws APIException if API returns error response
      */
     public List<UserInfo> fetchAuthorizedMappers() throws IOException, APIException {
-        // v3.2.7: Use static JSON file from GitHub Pages - ZERO rate limits
-        // Hosted on GitHub Pages CDN, auto-updates every 15 minutes
-        String fullUrl = baseUrl + "/users.json";
+        // v3.2.8: Use Vercel API with X-API-Key authentication (required as of Jan 6, 2026)
+        // Query parameters filter on server-side for better performance
+        String fullUrl = baseUrl + "/users?exclude_managers=true&status=Active";
         
         Logging.debug("DPWValidationTool: Fetching authorized mappers from " + fullUrl);
         
@@ -153,6 +153,7 @@ public class DPWAPIClient {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("X-API-Key", PluginSettings.getDPWApiKey());
             conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
             conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
             conn.setConnectTimeout(ValidationConstants.CONNECTION_TIMEOUT_MS);
@@ -250,6 +251,7 @@ public class DPWAPIClient {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("X-API-Key", PluginSettings.getDPWApiKey());
             conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
             conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
             conn.setDoOutput(true);
@@ -337,6 +339,7 @@ public class DPWAPIClient {
             // Multipart form data
             String boundary = "----DPWBoundary" + System.currentTimeMillis();
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+            conn.setRequestProperty("X-API-Key", PluginSettings.getDPWApiKey());
             conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
             conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
             
@@ -516,21 +519,8 @@ public class DPWAPIClient {
             while (userMatcher.find()) {
                 String userObj = userMatcher.group(1);
                 
-                // v3.2.7: Client-side filtering since static endpoint returns all users
-                // Extract status - only include "Active" users
-                Pattern statusPattern = Pattern.compile("\"status\"\\s*:\\s*\"([^\"]+)\"");
-                Matcher statusMatcher = statusPattern.matcher(userObj);
-                String status = statusMatcher.find() ? statusMatcher.group(1) : "";
-                
-                // Extract role - exclude "Manager" role for security
-                Pattern rolePattern = Pattern.compile("\"role\"\\s*:\\s*\"([^\"]+)\"");
-                Matcher roleMatcher = rolePattern.matcher(userObj);
-                String role = roleMatcher.find() ? roleMatcher.group(1) : "";
-                
-                // Skip if not Active or if Manager
-                if (!"Active".equals(status) || "Manager".equals(role)) {
-                    continue;
-                }
+                // v3.2.8: Server-side filtering via query params (exclude_managers=true&status=Active)
+                // No client-side filtering needed
                 
                 // Extract osm_username
                 Pattern usernamePattern = Pattern.compile("\"osm_username\"\\s*:\\s*\"([^\"]+)\"");

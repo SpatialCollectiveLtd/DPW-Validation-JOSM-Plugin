@@ -1078,9 +1078,9 @@ public class ValidationToolPanel extends ToggleDialog {
         // Use configurable DPW API base URL (v3.1.0-BETA: from PluginSettings)
         String apiBaseUrl = PluginSettings.getDPWApiBaseUrl();
         
-        // v3.2.7: Use static JSON file from GitHub Pages - ZERO rate limits!
-        // GitHub Pages CDN, bypasses all Vercel limits, auto-updates every 15 minutes
-        String fullUrl = apiBaseUrl + "/users.json";
+        // v3.2.8: Use Vercel API with X-API-Key authentication (required as of Jan 6, 2026)
+        // Server-side filtering via query params for better performance
+        String fullUrl = apiBaseUrl + "/users?exclude_managers=true&status=Active";
         
         // indicate fetching to the user
         SwingUtilities.invokeLater(() -> {
@@ -1093,6 +1093,7 @@ public class ValidationToolPanel extends ToggleDialog {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Accept", "application/json");
+        conn.setRequestProperty("X-API-Key", PluginSettings.getDPWApiKey());
         conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
         conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
         conn.setConnectTimeout(10000);
@@ -1251,24 +1252,17 @@ public class ValidationToolPanel extends ToggleDialog {
             
             String userObj = dataArray.substring(objStart, objEnd + 1);
             
-            // v3.2.7: Client-side filtering - static endpoint returns ALL users
-            // Extract status - only include "Active" users
-            String status = extractJsonField(userObj, "status");
-            
-            // Extract role - exclude "Manager" for security
-            String role = extractJsonField(userObj, "role");
-            
-            // Skip if not Active or if Manager
-            if (!"Active".equals(status) || "Manager".equals(role)) {
-                pos = objEnd + 1;
-                continue;
-            }
+            // v3.2.8: Server-side filtering via query params (exclude_managers=true&status=Active)
+            // No client-side filtering needed
             
             // Extract osm_username
             String username = extractJsonField(userObj, "osm_username");
             
             // Extract settlement (may be null or empty)
             String settlement = extractJsonField(userObj, "settlement");
+            
+            // Extract role (Validator or Digitizer)
+            String role = extractJsonField(userObj, "role");
             
             if (username != null && !username.trim().isEmpty()) {
                 users.add(new UserInfo(username, settlement, role));
@@ -1745,6 +1739,7 @@ public class ValidationToolPanel extends ToggleDialog {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("X-API-Key", PluginSettings.getDPWApiKey());
             conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
             conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
             conn.setConnectTimeout(10000);
@@ -1826,6 +1821,7 @@ public class ValidationToolPanel extends ToggleDialog {
             // Create multipart boundary
             String boundary = "----DPWValidationToolBoundary" + System.currentTimeMillis();
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+            conn.setRequestProperty("X-API-Key", PluginSettings.getDPWApiKey());
             
             try (OutputStream out = conn.getOutputStream();
                  java.io.PrintWriter writer = new java.io.PrintWriter(
@@ -2671,6 +2667,7 @@ public class ValidationToolPanel extends ToggleDialog {
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("X-API-Key", PluginSettings.getDPWApiKey());
                 conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
                 conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
                 conn.setDoOutput(true);
