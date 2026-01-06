@@ -91,9 +91,6 @@ public class ValidationToolPanel extends ToggleDialog {
     private static long cacheTimestamp = 0;
     private static final long CACHE_DURATION = 300000; // 5 minutes
     
-    private volatile long lastMapperFetchTime = 0;
-    private static final long MAPPER_FETCH_COOLDOWN = 10000; // 10 seconds between fetches to prevent 429 errors
-    
     // v3.1.1 - Rate limiting for validation submissions
     private volatile long lastSubmissionTime = 0;
     private static final long SUBMISSION_COOLDOWN = 3000; // 3 seconds between submissions
@@ -144,7 +141,7 @@ public class ValidationToolPanel extends ToggleDialog {
                 });
             }
             
-            // Kick off an initial authorized-mapper fetch in background with rate limiting
+            // Kick off an initial authorized-mapper fetch in background
             new Thread(() -> {
                 try {
                     setFetchingMappers(true);
@@ -1077,14 +1074,6 @@ public class ValidationToolPanel extends ToggleDialog {
             });
             return;
         }
-        
-        // Rate limiting: prevent excessive API calls
-        if (now - lastMapperFetchTime < MAPPER_FETCH_COOLDOWN) {
-            long waitTime = (MAPPER_FETCH_COOLDOWN - (now - lastMapperFetchTime)) / 1000;
-            Logging.info("DPWValidationTool: Skipping mapper fetch - rate limit active. Wait " + waitTime + " seconds.");
-            throw new Exception("Rate limit: Please wait " + waitTime + " seconds before refreshing");
-        }
-        lastMapperFetchTime = now;
         
         // Use configurable DPW API base URL (v3.1.0-BETA: from PluginSettings)
         String apiBaseUrl = PluginSettings.getDPWApiBaseUrl();

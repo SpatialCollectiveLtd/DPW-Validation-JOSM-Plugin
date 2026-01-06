@@ -77,9 +77,6 @@ public final class ValidationConstants {
     /** User list cache duration in milliseconds (5 minutes) */
     public static final long CACHE_DURATION_MS = 300_000;
     
-    /** Mapper fetch cooldown period in milliseconds (10 seconds) */
-    public static final long MAPPER_FETCH_COOLDOWN_MS = 10_000;
-    
     /** Default cache expiry in hours */
     public static final int DEFAULT_CACHE_EXPIRY_HOURS = 24;
     
