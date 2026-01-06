@@ -23,7 +23,7 @@ public class UpdateChecker {
     // Changed from /releases/latest to /releases to include pre-releases and beta versions
     private static final String GITHUB_API_URL = "https://api.github.com/repos/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
     private static final String GITHUB_RELEASES_URL = "https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
-    public static final String CURRENT_VERSION = "3.1.2";
+    public static final String CURRENT_VERSION = "3.2.3";
     
     /**
      * Check for pending update and apply it on startup
