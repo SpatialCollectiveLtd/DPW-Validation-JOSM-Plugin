@@ -124,7 +124,7 @@ public class ValidationToolPanel extends ToggleDialog {
     private JLabel[] errorCountLabels = new JLabel[errorTypes.length];
     
     public ValidationToolPanel() {
-        super(I18n.tr("DPW Validation Tool v" + UpdateChecker.CURRENT_VERSION), "validator", I18n.tr("Open DPW Validation Tool"), null, 150);
+        super(I18n.tr("DPW Validation Tool v" + UpdateChecker.CURRENT_VERSION), "validator", I18n.tr("Open DPW Validation Tool"), null, 400);
         try {
             Logging.info("DPWValidationTool: constructing ValidationToolPanel v" + UpdateChecker.CURRENT_VERSION);
             setupUI();
@@ -167,8 +167,8 @@ public class ValidationToolPanel extends ToggleDialog {
      */
     private void setupUI() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setPreferredSize(new Dimension(640, 480));
-        panel.setMaximumSize(new Dimension(1024, 800));
+        panel.setPreferredSize(new Dimension(800, 600));
+        panel.setMaximumSize(new Dimension(1200, 1000));
         
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(2, 5, 2, 5);
@@ -515,11 +515,17 @@ public class ValidationToolPanel extends ToggleDialog {
             "Logs the mapper's work with error counts and comments.<br>" +
             "All work is recorded regardless of quality - you mark incomplete<br>" +
             "tasks in HOT Tasking Manager for the mapper to fix later.</html>");
-        validateButton.setPreferredSize(new Dimension(180, 32));
-        validateButton.setFont(validateButton.getFont().deriveFont(Font.BOLD, 13f));
+        validateButton.setPreferredSize(new Dimension(200, 40));
+        validateButton.setFont(validateButton.getFont().deriveFont(Font.BOLD, 14f));
+        validateButton.setOpaque(true);
         validateButton.setBackground(new Color(76, 175, 80));
-        validateButton.setForeground(Color.WHITE);
+        validateButton.setForeground(Color.BLACK);
         validateButton.setFocusPainted(false);
+        validateButton.setBorderPainted(true);
+        validateButton.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(56, 142, 60), 2),
+            BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
 
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         actionPanel.add(validateButton);

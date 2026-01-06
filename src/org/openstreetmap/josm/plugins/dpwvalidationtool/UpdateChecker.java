@@ -16,14 +16,14 @@ import java.nio.file.StandardCopyOption;
 
 /**
  * Checks for plugin updates from GitHub releases and auto-installs updates
- * @version 3.0.9
+ * @version 3.1.0
  */
 public class UpdateChecker {
     
     // Changed from /releases/latest to /releases to include pre-releases and beta versions
     private static final String GITHUB_API_URL = "https://api.github.com/repos/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
     private static final String GITHUB_RELEASES_URL = "https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
-    public static final String CURRENT_VERSION = "3.0.9";
+    public static final String CURRENT_VERSION = "3.1.0";
     
     /**
      * Check for pending update and apply it on startup
