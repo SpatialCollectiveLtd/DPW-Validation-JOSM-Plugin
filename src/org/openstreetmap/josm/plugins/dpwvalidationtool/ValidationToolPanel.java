@@ -1078,8 +1078,9 @@ public class ValidationToolPanel extends ToggleDialog {
         // Use configurable DPW API base URL (v3.1.0-BETA: from PluginSettings)
         String apiBaseUrl = PluginSettings.getDPWApiBaseUrl();
         
-        // Construct full URL with query parameters (SECURITY: exclude_managers=true is REQUIRED)
-        String fullUrl = apiBaseUrl + "/users?exclude_managers=true&status=Active";
+        // v3.2.7: Use static JSON file endpoint - ZERO rate limits!
+        // Static file bypasses Vercel DDoS protection, auto-updates every 15 minutes
+        String fullUrl = apiBaseUrl + "/users.json";
         
         // indicate fetching to the user
         SwingUtilities.invokeLater(() -> {
@@ -1250,14 +1251,24 @@ public class ValidationToolPanel extends ToggleDialog {
             
             String userObj = dataArray.substring(objStart, objEnd + 1);
             
+            // v3.2.7: Client-side filtering - static endpoint returns ALL users
+            // Extract status - only include "Active" users
+            String status = extractJsonField(userObj, "status");
+            
+            // Extract role - exclude "Manager" for security
+            String role = extractJsonField(userObj, "role");
+            
+            // Skip if not Active or if Manager
+            if (!"Active".equals(status) || "Manager".equals(role)) {
+                pos = objEnd + 1;
+                continue;
+            }
+            
             // Extract osm_username
             String username = extractJsonField(userObj, "osm_username");
             
             // Extract settlement (may be null or empty)
             String settlement = extractJsonField(userObj, "settlement");
-            
-            // Extract role (Validator or Digitizer)
-            String role = extractJsonField(userObj, "role");
             
             if (username != null && !username.trim().isEmpty()) {
                 users.add(new UserInfo(username, settlement, role));

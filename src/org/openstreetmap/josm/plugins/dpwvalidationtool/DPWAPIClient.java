@@ -142,8 +142,9 @@ public class DPWAPIClient {
      * @throws APIException if API returns error response
      */
     public List<UserInfo> fetchAuthorizedMappers() throws IOException, APIException {
-        // Construct URL with query parameters (SECURITY: exclude_managers=true is REQUIRED)
-        String fullUrl = baseUrl + "/users?exclude_managers=true&status=Active";
+        // v3.2.7: Use static JSON file endpoint - ZERO rate limits (no Vercel DDoS protection)
+        // Static file auto-updates every 15 minutes via cron job
+        String fullUrl = baseUrl + "/users.json";
         
         Logging.debug("DPWValidationTool: Fetching authorized mappers from " + fullUrl);
         
@@ -514,6 +515,22 @@ public class DPWAPIClient {
             
             while (userMatcher.find()) {
                 String userObj = userMatcher.group(1);
+                
+                // v3.2.7: Client-side filtering since static endpoint returns all users
+                // Extract status - only include "Active" users
+                Pattern statusPattern = Pattern.compile("\"status\"\\s*:\\s*\"([^\"]+)\"");
+                Matcher statusMatcher = statusPattern.matcher(userObj);
+                String status = statusMatcher.find() ? statusMatcher.group(1) : "";
+                
+                // Extract role - exclude "Manager" role for security
+                Pattern rolePattern = Pattern.compile("\"role\"\\s*:\\s*\"([^\"]+)\"");
+                Matcher roleMatcher = rolePattern.matcher(userObj);
+                String role = roleMatcher.find() ? roleMatcher.group(1) : "";
+                
+                // Skip if not Active or if Manager
+                if (!"Active".equals(status) || "Manager".equals(role)) {
+                    continue;
+                }
                 
                 // Extract osm_username
                 Pattern usernamePattern = Pattern.compile("\"osm_username\"\\s*:\\s*\"([^\"]+)\"");
