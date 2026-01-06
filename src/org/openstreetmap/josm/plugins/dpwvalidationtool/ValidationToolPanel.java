@@ -1078,8 +1078,8 @@ public class ValidationToolPanel extends ToggleDialog {
         // Use configurable DPW API base URL (v3.1.0-BETA: from PluginSettings)
         String apiBaseUrl = PluginSettings.getDPWApiBaseUrl();
         
-        // v3.2.7: Use static JSON file endpoint - ZERO rate limits!
-        // Static file bypasses Vercel DDoS protection, auto-updates every 15 minutes
+        // v3.2.7: Use static JSON file from GitHub Pages - ZERO rate limits!
+        // GitHub Pages CDN, bypasses all Vercel limits, auto-updates every 15 minutes
         String fullUrl = apiBaseUrl + "/users.json";
         
         // indicate fetching to the user

@@ -7,16 +7,17 @@
 ### Problem Solved
 Even after fixing the URL construction bug in v3.2.6, Vercel's DDoS protection was still causing intermittent HTTP 429 errors. The backend team created a **static JSON file** that completely bypasses all rate limiting.
 
-### Solution: Static Endpoint
-The plugin now uses a static JSON file that is:
-- ✅ **Zero rate limits** - Bypasses Vercel DDoS protection entirely
-- ✅ **CDN-cached** - Fast global access (10-50ms response times)
-- ✅ **Auto-updated** - Regenerates every 15 minutes via cron job
+### Solution: Static Endpoint on GitHub Pages
+The plugin now uses a static JSON file hosted on GitHub Pages:
+- ✅ **Zero rate limits** - GitHub Pages has no API throttling
+- ✅ **Global CDN** - Fast access worldwide (10-50ms response times)  
+- ✅ **Independent of Vercel** - Not affected by Vercel DDoS protection
+- ✅ **Auto-updated** - Regenerates every 15 minutes via GitHub Actions
 - ✅ **Same data format** - No breaking changes to response structure
 
 ## 🔧 Technical Changes
 
-### New Endpoint
+### New Endpoint (GitHub Pages)
 **Before (v3.2.6):**
 ```
 GET https://app.spatialcollective.com/api/users?exclude_managers=true&status=Active
@@ -25,9 +26,9 @@ Subject to Vercel rate limiting ❌
 
 **After (v3.2.7):**
 ```
-GET https://app.spatialcollective.com/api/users.json
+GET https://spatialcollectiveltd.github.io/api/users.json
 ```
-Static file - NO rate limits ✅
+Hosted on GitHub Pages CDN - NO rate limits ✅
 
 ### Response Format
 Same JSON structure as before:

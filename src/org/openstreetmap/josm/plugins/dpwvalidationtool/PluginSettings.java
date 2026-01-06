@@ -26,7 +26,8 @@ public class PluginSettings {
     private static final String DEFAULT_PROJECT_ID = PREFIX + "default-project-id";
     
     // Default values
-    private static final String DEFAULT_DPW_API_URL = "https://app.spatialcollective.com/api";
+    // v3.2.7: GitHub Pages for zero rate limits (no Vercel DDoS protection)
+    private static final String DEFAULT_DPW_API_URL = "https://spatialcollectiveltd.github.io/api";
     private static final String DEFAULT_TM_API_URL = "https://tasking-manager-tm4-production-api.hotosm.org/api/v2";
     
     /**

@@ -142,8 +142,8 @@ public class DPWAPIClient {
      * @throws APIException if API returns error response
      */
     public List<UserInfo> fetchAuthorizedMappers() throws IOException, APIException {
-        // v3.2.7: Use static JSON file endpoint - ZERO rate limits (no Vercel DDoS protection)
-        // Static file auto-updates every 15 minutes via cron job
+        // v3.2.7: Use static JSON file from GitHub Pages - ZERO rate limits
+        // Hosted on GitHub Pages CDN, auto-updates every 15 minutes
         String fullUrl = baseUrl + "/users.json";
         
         Logging.debug("DPWValidationTool: Fetching authorized mappers from " + fullUrl);
