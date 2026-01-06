@@ -152,7 +152,14 @@ public class DPWAPIClient {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.0");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+            conn.setRequestProperty("Accept-Encoding", "gzip, deflate, br");
+            conn.setRequestProperty("Cache-Control", "no-cache");
+            conn.setRequestProperty("Pragma", "no-cache");
+            conn.setRequestProperty("Sec-Fetch-Dest", "empty");
+            conn.setRequestProperty("Sec-Fetch-Mode", "cors");
+            conn.setRequestProperty("Sec-Fetch-Site", "same-origin");
             conn.setConnectTimeout(ValidationConstants.CONNECTION_TIMEOUT_MS);
             conn.setReadTimeout(ValidationConstants.READ_TIMEOUT_MS);
             
@@ -248,7 +255,16 @@ public class DPWAPIClient {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.0");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+            conn.setRequestProperty("Accept-Encoding", "gzip, deflate, br");
+            conn.setRequestProperty("Cache-Control", "no-cache");
+            conn.setRequestProperty("Pragma", "no-cache");
+            conn.setRequestProperty("Origin", baseUrl);
+            conn.setRequestProperty("Referer", baseUrl + "/");
+            conn.setRequestProperty("Sec-Fetch-Dest", "empty");
+            conn.setRequestProperty("Sec-Fetch-Mode", "cors");
+            conn.setRequestProperty("Sec-Fetch-Site", "same-origin");
             conn.setDoOutput(true);
             conn.setConnectTimeout(15000);
             conn.setReadTimeout(15000);
@@ -334,7 +350,16 @@ public class DPWAPIClient {
             // Multipart form data
             String boundary = "----DPWBoundary" + System.currentTimeMillis();
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.0");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+            conn.setRequestProperty("Accept-Encoding", "gzip, deflate, br");
+            conn.setRequestProperty("Cache-Control", "no-cache");
+            conn.setRequestProperty("Origin", baseUrl);
+            conn.setRequestProperty("Referer", baseUrl + "/");
+            conn.setRequestProperty("Sec-Fetch-Dest", "empty");
+            conn.setRequestProperty("Sec-Fetch-Mode", "cors");
+            conn.setRequestProperty("Sec-Fetch-Site", "same-origin");
             
             try (OutputStream os = conn.getOutputStream();
                  OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
