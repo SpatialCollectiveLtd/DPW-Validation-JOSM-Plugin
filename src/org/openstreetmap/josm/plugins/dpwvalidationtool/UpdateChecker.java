@@ -16,14 +16,14 @@ import java.nio.file.StandardCopyOption;
 
 /**
  * Checks for plugin updates from GitHub releases and auto-installs updates
- * @version 3.0.8
+ * @version 3.0.9
  */
 public class UpdateChecker {
     
     // Changed from /releases/latest to /releases to include pre-releases and beta versions
     private static final String GITHUB_API_URL = "https://api.github.com/repos/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
     private static final String GITHUB_RELEASES_URL = "https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin/releases";
-    public static final String CURRENT_VERSION = "3.0.8";
+    public static final String CURRENT_VERSION = "3.0.9";
     
     /**
      * Check for pending update and apply it on startup
@@ -53,14 +53,23 @@ public class UpdateChecker {
                 Files.move(updateFile, currentFile, StandardCopyOption.REPLACE_EXISTING);
                 Logging.info("UpdateChecker: Update installed successfully!");
                 
+                // Clear JOSM's plugin cache to force reload of plugin information
+                try {
+                    org.openstreetmap.josm.spi.preferences.Config.getPref().putList("pluginmanager.version.DPWValidationTool", null);
+                    org.openstreetmap.josm.spi.preferences.Config.getPref().put("plugin.DPWValidationTool.version", "");
+                    Logging.info("UpdateChecker: Cleared JOSM plugin cache");
+                } catch (Exception cacheEx) {
+                    Logging.warn("UpdateChecker: Could not clear plugin cache: " + cacheEx.getMessage());
+                }
+                
                 // Show success notification
                 SwingUtilities.invokeLater(() -> {
                     JOptionPane.showMessageDialog(
                         null,
                         "<html><b>DPW Validation Tool Updated!</b><br><br>"
-                            + "The plugin has been successfully updated.<br>"
-                        + "New version is now active.<br><br>"
-                        + "<i>Note: Restart JOSM for full update.</i></html>",
+                            + "The plugin has been successfully updated to v" + CURRENT_VERSION + ".<br>"
+                        + "The new version is now active.<br><br>"
+                        + "<i>Restart JOSM to complete the update.</i></html>",
                     "Update Complete",
                     JOptionPane.INFORMATION_MESSAGE
                     );

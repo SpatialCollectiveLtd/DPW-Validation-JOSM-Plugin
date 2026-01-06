@@ -58,10 +58,12 @@ public class ValidationToolPanel extends ToggleDialog {
     private static class UserInfo {
         String osmUsername;
         String settlement;
+        String role;
         
-        UserInfo(String osmUsername, String settlement) {
+        UserInfo(String osmUsername, String settlement, String role) {
             this.osmUsername = osmUsername;
             this.settlement = settlement != null ? settlement : "";
+            this.role = role != null ? role : "Digitizer";
         }
     }
 
@@ -662,21 +664,36 @@ public class ValidationToolPanel extends ToggleDialog {
                         return;
                     }
                     
-                    // Check if current user is authorized for this project (case-insensitive)
+                    // Check if current user has Validator role (only validators can perform validation)
                     synchronized (mapperLock) {
-                        if (!authorizedMappers.isEmpty()) {
+                        if (cachedUserList != null && !cachedUserList.isEmpty()) {
                             final String validatorToCheck = currentValidator;
-                            boolean isAuthorized = authorizedMappers.stream()
-                                .anyMatch(user -> user.equalsIgnoreCase(validatorToCheck));
                             
-                            if (!isAuthorized) {
+                            // Find current user in cached user list
+                            UserInfo currentUser = cachedUserList.stream()
+                                .filter(user -> user.osmUsername.equalsIgnoreCase(validatorToCheck))
+                                .findFirst()
+                                .orElse(null);
+                            
+                            if (currentUser == null) {
                                 SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
-                                    "Access Denied: You are not authorized for this project.\n\n" +
+                                    "Access Denied: You are not registered in the DPW system.\n\n" +
+                                    "Current user: " + validatorToCheck + "\n\n" +
+                                    "Please contact your project manager to request access.",
+                                    "User Not Found",
+                                    JOptionPane.ERROR_MESSAGE));
+                                return;
+                            }
+                            
+                            // Check if user has Validator role
+                            if (!"Validator".equalsIgnoreCase(currentUser.role)) {
+                                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                                    "Access Denied: Only validators can perform validation tasks.\n\n" +
                                     "Current user: " + validatorToCheck + "\n" +
-                                    "Authorized mappers: " + authorizedMappers.size() + " users\n\n" +
-                                    "Please contact your project manager to request access.\n\n" +
-                                    "Note: Only authorized project members can isolate and validate data.",
-                                    "Authorization Required",
+                                    "Your role: " + currentUser.role + "\n\n" +
+                                    "Please contact your project manager to request validator access.\n\n" +
+                                    "Note: Only users with 'Validator' role can isolate and validate data.",
+                                    "Validator Role Required",
                                     JOptionPane.ERROR_MESSAGE));
                                 return;
                             }
@@ -1236,8 +1253,11 @@ public class ValidationToolPanel extends ToggleDialog {
             // Extract settlement (may be null or empty)
             String settlement = extractJsonField(userObj, "settlement");
             
+            // Extract role (Validator or Digitizer)
+            String role = extractJsonField(userObj, "role");
+            
             if (username != null && !username.trim().isEmpty()) {
-                users.add(new UserInfo(username, settlement));
+                users.add(new UserInfo(username, settlement, role));
             }
             
             pos = objEnd + 1;
