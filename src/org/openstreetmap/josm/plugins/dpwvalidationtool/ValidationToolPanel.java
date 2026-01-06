@@ -1092,7 +1092,8 @@ public class ValidationToolPanel extends ToggleDialog {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Accept", "application/json");
-        conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.2");
+        conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
+        conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(10000);
 
@@ -1733,8 +1734,8 @@ public class ValidationToolPanel extends ToggleDialog {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.2");
-            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
+            conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
             
@@ -2659,7 +2660,8 @@ public class ValidationToolPanel extends ToggleDialog {
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setRequestProperty("Accept", "application/json");
-                conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.2");
+                conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
+                conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
                 conn.setDoOutput(true);
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(15000);

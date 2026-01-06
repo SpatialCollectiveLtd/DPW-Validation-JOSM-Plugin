@@ -152,7 +152,8 @@ public class DPWAPIClient {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.2");
+            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
+            conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
             conn.setConnectTimeout(ValidationConstants.CONNECTION_TIMEOUT_MS);
             conn.setReadTimeout(ValidationConstants.READ_TIMEOUT_MS);
             
@@ -248,7 +249,8 @@ public class DPWAPIClient {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.2");
+            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
+            conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
             conn.setDoOutput(true);
             conn.setConnectTimeout(15000);
             conn.setReadTimeout(15000);
@@ -334,7 +336,8 @@ public class DPWAPIClient {
             // Multipart form data
             String boundary = "----DPWBoundary" + System.currentTimeMillis();
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/3.2.2");
+            conn.setRequestProperty("User-Agent", "DPW-JOSM-Plugin/" + UpdateChecker.CURRENT_VERSION);
+            conn.setRequestProperty("Referer", "https://josm.openstreetmap.de/");
             
             try (OutputStream os = conn.getOutputStream();
                  OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
