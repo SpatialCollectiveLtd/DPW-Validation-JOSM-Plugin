@@ -2669,6 +2669,7 @@ public class ValidationToolPanel extends ToggleDialog {
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("X-API-Key", DPW_API_KEY); // CRITICAL: API key authentication
                 conn.setDoOutput(true);
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(15000);

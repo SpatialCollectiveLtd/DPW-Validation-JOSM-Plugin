@@ -4,7 +4,7 @@
 
     <!-- Plugin properties -->
     <property name="plugin.name" value="DPWValidationTool"/>
-    <property name="plugin.version" value="3.1.1"/>
+    <property name="plugin.version" value="3.1.2"/>
     <property name="plugin.main.version" value="18823"/>
     <property name="plugin.main.class" value="org.openstreetmap.josm.plugins.dpwvalidationtool.DPWValidationToolPlugin"/>
 
@@ -72,7 +72,7 @@
                 <attribute name="Plugin-Version" value="${plugin.version}"/>
                 <attribute name="Plugin-Name" value="DPW Validation Tool"/>
                 <attribute name="Plugin-Main-Version" value="${plugin.main.version}"/>
-                <attribute name="Plugin-Description" value="DPW Validation Tool - Fix HTTP 429 rate limit errors with retry logic"/>
+                <attribute name="Plugin-Description" value="DPW Validation Tool - CRITICAL: Fix missing API key causing 429 errors"/>
                 <attribute name="Plugin-Author" value="Spatial Collective Ltd"/>
                 <attribute name="Plugin-Link" value="https://github.com/SpatialCollectiveLtd/DPW-Validation-JOSM-Plugin"/>
                 <attribute name="Plugin-Canloadatruntime" value="true"/>
