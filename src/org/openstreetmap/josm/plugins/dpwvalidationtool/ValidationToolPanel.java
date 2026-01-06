@@ -188,46 +188,18 @@ public class ValidationToolPanel extends ToggleDialog {
     }
     
     /**
-     * Setup task information section (TM URL, Task ID, Settlement).
+     * Setup task information section (Task ID, Settlement).
+     * Project URL is configured in Settings panel.
      */
     private void setupTaskInfoSection(JPanel panel, GridBagConstraints gbc) {
-        // TM URL field (optional, only shown if TM integration enabled)
-        if (PluginSettings.isTMIntegrationEnabled()) {
-            gbc.gridx = 0;
-            gbc.gridwidth = 1;
-            gbc.fill = GridBagConstraints.NONE;
-            gbc.weightx = 0;
-            JLabel tmLabel = new JLabel("<html><b>TM Project URL:</b></html>");
-            tmLabel.setToolTipText("<html>Tasking Manager project URL<br>" +
-                "Enables Task ID auto-detection from remote control</html>");
-            panel.add(tmLabel, gbc);
-
-            gbc.gridx = 1;
-            gbc.gridwidth = 2;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            gbc.weightx = 1.0;
-            tmUrlField = new JTextField();
-            tmUrlField.setToolTipText("<html><b>Tasking Manager Project URL</b><br>" +
-                "Example: https://tasks.hotosm.org/projects/27396<br>" +
-                "This enables Task ID auto-detection when you load tasks via remote control.<br>" +
-                "Set default URL in Tools → DPW Validation Tool Settings to avoid re-entering.</html>");
-            
-            // Pre-fill from default project URL in settings
-            String defaultProjectUrl = PluginSettings.getDefaultProjectUrl();
-            if (defaultProjectUrl != null && !defaultProjectUrl.trim().isEmpty()) {
-                tmUrlField.setText(defaultProjectUrl.trim());
-            }
-            panel.add(tmUrlField, gbc);
-            gbc.gridy++;
-        }
-
-        // Task ID field
+        // Task ID field - for entering the specific task number within the project
         gbc.gridx = 0;
         gbc.gridwidth = 1;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
         JLabel taskIdLabel = new JLabel("Task ID:");
-        taskIdLabel.setToolTipText("<html>Individual task number (e.g., 27, 20, 24)<br>" +
+        taskIdLabel.setToolTipText("<html>Individual task number from Tasking Manager (e.g., 1, 27, 153)<br>" +
+            "This is the specific grid square number within your project.<br>" +
             "Auto-detected when loading via TM remote control</html>");
         panel.add(taskIdLabel, gbc);
 
@@ -575,18 +547,6 @@ public class ValidationToolPanel extends ToggleDialog {
             public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
             public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
         });
-
-        // v3.1.0-BETA: TM URL auto-detection listener
-        if (PluginSettings.isTMIntegrationEnabled() && tmUrlField != null) {
-            tmUrlField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-                private void update() {
-                    handleTMUrlInput();
-                }
-                public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
-                public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
-                public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
-            });
-        }
 
         mapperUsernameComboBox.addItemListener(e -> updateAuthStatus());
     // when mapper selection changes, update the building count shown (mapper-specific)
@@ -3087,22 +3047,37 @@ public class ValidationToolPanel extends ToggleDialog {
     // ========================================================================================
 
     /**
-     * Handle TM URL input and auto-populate mapper/task information
+     * Construct TM URL from settings project URL and task ID, then fetch task info
      */
     private void handleTMUrlInput() {
-        if (!PluginSettings.isTMIntegrationEnabled() || tmUrlField == null) {
+        if (!PluginSettings.isTMIntegrationEnabled()) {
             return;
         }
 
-        String tmUrl = tmUrlField.getText().trim();
-        if (tmUrl.isEmpty()) {
+        // Get project URL from settings
+        String projectUrl = PluginSettings.getDefaultProjectUrl();
+        if (projectUrl == null || projectUrl.trim().isEmpty()) {
             return;
         }
+
+        // Get task ID from field
+        String taskIdStr = taskIdField.getText().trim();
+        if (taskIdStr.isEmpty()) {
+            return;
+        }
+
+        // Construct full TM URL: project URL + /tasks/ + task ID
+        String tmUrl = projectUrl.trim();
+        if (!tmUrl.endsWith("/")) {
+            tmUrl += "/";
+        }
+        tmUrl += "tasks/" + taskIdStr;
 
         // Parse TM URL in background to avoid blocking UI
+        final String finalTmUrl = tmUrl;
         new Thread(() -> {
             try {
-                TaskManagerAPIClient.TaskInfo info = TaskManagerAPIClient.fetchTaskInfoFromURL(tmUrl);
+                TaskManagerAPIClient.TaskInfo info = TaskManagerAPIClient.fetchTaskInfoFromURL(finalTmUrl);
                 
                 SwingUtilities.invokeLater(() -> {
                     if (info.success) {
@@ -3119,7 +3094,7 @@ public class ValidationToolPanel extends ToggleDialog {
                             }
                         }
                         
-                        Logging.info("TM integration: Auto-populated from " + tmUrl);
+                        Logging.info("TM integration: Auto-populated from " + finalTmUrl);
                     } else {
                         Logging.warn("TM integration: " + info.errorMessage);
                     }

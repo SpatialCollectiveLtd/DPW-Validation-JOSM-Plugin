@@ -41,7 +41,7 @@ public class SettingsPanel extends JDialog {
         int row = 0;
         
         // Header
-        JLabel headerLabel = new JLabel("<html><b>DPW Validation Tool Settings v3.0.7</b></html>");
+        JLabel headerLabel = new JLabel("<html><b>DPW Validation Tool Settings v3.0.8</b></html>");
         headerLabel.setFont(headerLabel.getFont().deriveFont(Font.BOLD, 14f));
         mainPanel.add(headerLabel, GBC.eol().fill(GBC.HORIZONTAL).insets(0, 0, 0, 15));
         row++;
