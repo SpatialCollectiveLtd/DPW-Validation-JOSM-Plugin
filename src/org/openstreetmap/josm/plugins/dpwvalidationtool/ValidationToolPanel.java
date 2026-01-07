@@ -105,10 +105,7 @@ public class ValidationToolPanel extends ToggleDialog {
     private int validatorUserId = -1;
     private String googleDriveFileUrl = null;
     
-    // v3.0 - Validation Preview Panel
-    private JPanel validationPreviewPanel;
-    private JTextArea previewTextArea;
-    private boolean previewExpanded = false;
+    // v3.3.0 - Removed validation preview panel (UI simplification)
 
     private final String[] errorTypes = {
         "Hanging Nodes", "Overlapping Buildings", "Buildings Crossing Highway",
@@ -1412,12 +1409,12 @@ public class ValidationToolPanel extends ToggleDialog {
                 case IDLE:
                     isolateButton.setEnabled(true);
                     validateButton.setEnabled(false);
-                    validationPreviewPanel.setVisible(false);
+                    // v3.3.0: Removed preview panel visibility
                     break;
                 case ISOLATED:
                     isolateButton.setEnabled(true);
                     validateButton.setEnabled(!taskIdField.getText().trim().isEmpty());
-                    validationPreviewPanel.setVisible(true);
+                    // v3.3.0: Removed preview panel visibility
                     break;
                 case SUBMITTED:
                     isolateButton.setEnabled(false);
@@ -1432,66 +1429,9 @@ public class ValidationToolPanel extends ToggleDialog {
     }
     
     /**
-     * Update the validation preview panel with current form data.
-     * v3.0 - Shows summary of validation before submission.
+     * v3.3.0: Removed updateValidationPreview() method.
+     * Validation preview panel was removed to simplify UI.
      */
-    private void updateValidationPreview() {
-        StringBuilder preview = new StringBuilder();
-        preview.append("═══════════════════════════════════════════════════════\n");
-        preview.append("              VALIDATION SUMMARY\n");
-        preview.append("═══════════════════════════════════════════════════════\n\n");
-        
-        // Task Information
-        String taskId = taskIdField.getText().trim();
-        String mapper = (String) mapperUsernameComboBox.getSelectedItem();
-        String settlement = settlementField.getText().trim();
-        String dateString = getDateStringFromPicker();
-        String totalBuildings = totalBuildingsField.getText().trim();
-        
-        preview.append("Task ID:         ").append(taskId.isEmpty() ? "(not specified)" : taskId).append("\n");
-        preview.append("Settlement:      ").append(settlement.isEmpty() ? "(not specified)" : settlement).append("\n");
-        preview.append("Mapper:          ").append(mapper != null ? mapper : "(not selected)").append("\n");
-        preview.append("Date:            ").append(dateString != null ? dateString : "(not specified)").append("\n");
-        preview.append("Total Buildings: ").append(totalBuildings).append("\n\n");
-        
-        // Error Summary
-        preview.append("───────────────────────────────────────────────────────\n");
-        preview.append("                 ERROR BREAKDOWN\n");
-        preview.append("───────────────────────────────────────────────────────\n\n");
-        
-        int totalErrors = 0;
-        for (int i = 0; i < errorTypes.length; i++) {
-            if (errorCounts[i] > 0) {
-                preview.append(String.format("  • %-35s %3d\n", errorTypes[i] + ":", errorCounts[i]));
-                totalErrors += errorCounts[i];
-            }
-        }
-        
-        if (totalErrors == 0) {
-            preview.append("  ✓ No errors found - Clean validation!\n");
-        } else {
-            preview.append(String.format("\n  TOTAL ERRORS: %d\n", totalErrors));
-        }
-        
-        // Comments
-        String comments = validatorCommentsArea.getText().trim();
-        if (!comments.isEmpty()) {
-            preview.append("\n───────────────────────────────────────────────────────\n");
-            preview.append("                VALIDATOR COMMENTS\n");
-            preview.append("───────────────────────────────────────────────────────\n\n");
-            preview.append(comments).append("\n");
-        }
-        
-        preview.append("\n═══════════════════════════════════════════════════════\n");
-        
-        // Validation Decision (will be set when button is clicked)
-        if (lastValidationStatus != null) {
-            preview.append("\nDecision: ").append(lastValidationStatus).append("\n");
-        }
-        
-        previewTextArea.setText(preview.toString());
-        previewTextArea.setCaretPosition(0); // Scroll to top
-    }
     
     /**
      * Show enhanced confirmation dialog before submitting validation.
