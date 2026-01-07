@@ -127,6 +127,8 @@ public class ValidationToolPanel extends ToggleDialog {
             if (PluginSettings.isTMIntegrationEnabled() && 
                 PluginSettings.isRemoteControlDetectionEnabled()) {
                 MainApplication.getLayerManager().addActiveLayerChangeListener(e -> {
+                    // v3.3.0: Refresh mapper dropdown when new data is loaded
+                    updatePanelData();
                     checkRemoteControlForTMTask();
                 });
             }
@@ -1390,7 +1392,10 @@ public class ValidationToolPanel extends ToggleDialog {
             Logging.warn("DPWValidationTool: Could not reset date picker: " + e.getMessage());
         }
         
-        // Keep mapper selection and total buildings as-is (user may want to validate more from same mapper)
+        // v3.3.0: Clear mapper dropdown to prepare for new task data
+        // The dropdown will be repopulated when new data is loaded via layer change listener
+        mapperUsernameComboBox.removeAllItems();
+        settlementField.setText("");
         
         updateSubmitButtonsEnabled();
         updateWorkflowState();
