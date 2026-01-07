@@ -1532,7 +1532,7 @@ public class ValidationToolPanel extends ToggleDialog {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("X-API-Key", "dpw-josm-plugin-2025-secure-key");
+            conn.setRequestProperty("X-API-Key", DPW_API_KEY);
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
             
@@ -1607,7 +1607,7 @@ public class ValidationToolPanel extends ToggleDialog {
             // Create multipart boundary
             String boundary = "----DPWValidationToolBoundary" + System.currentTimeMillis();
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-            conn.setRequestProperty("X-API-Key", "dpw-josm-plugin-2025-secure-key");
+            conn.setRequestProperty("X-API-Key", DPW_API_KEY);
             
             try (OutputStream out = conn.getOutputStream();
                  java.io.PrintWriter writer = new java.io.PrintWriter(
@@ -2464,7 +2464,7 @@ public class ValidationToolPanel extends ToggleDialog {
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setRequestProperty("Accept", "application/json");
-                conn.setRequestProperty("X-API-Key", "dpw-josm-plugin-2025-secure-key");
+                conn.setRequestProperty("X-API-Key", DPW_API_KEY);
                 conn.setDoOutput(true);
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(15000);
