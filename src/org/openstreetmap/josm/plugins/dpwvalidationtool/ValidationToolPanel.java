@@ -1661,9 +1661,9 @@ public class ValidationToolPanel extends ToggleDialog {
         }
         
         try {
-            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
+            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://app.spatialcollective.com/api");
             String encodedUsername = URLEncoder.encode(osmUsername, StandardCharsets.UTF_8.toString());
-            String apiUrl = baseUrl + "/api/users?osm_username=" + encodedUsername + "&exclude_managers=true";
+            String apiUrl = baseUrl + "/users?osm_username=" + encodedUsername + "&exclude_managers=true";
             
             Logging.debug("DPWValidationTool: Fetching user_id for: " + osmUsername);
             
@@ -1671,6 +1671,7 @@ public class ValidationToolPanel extends ToggleDialog {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("X-API-Key", "dpw-josm-plugin-2025-secure-key");
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
             
@@ -1730,8 +1731,8 @@ public class ValidationToolPanel extends ToggleDialog {
     private String uploadToCloud(java.io.File file, int validationLogId, int mapperUserId, 
                                    int validatorUserId, String taskId, String settlement) {
         try {
-            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
-            String apiUrl = baseUrl + "/api/osm-uploads";
+            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://app.spatialcollective.com/api");
+            String apiUrl = baseUrl + "/osm-uploads";
             
             Logging.info("DPWValidationTool: Uploading to cloud: " + file.getName());
             
@@ -1745,6 +1746,7 @@ public class ValidationToolPanel extends ToggleDialog {
             // Create multipart boundary
             String boundary = "----DPWValidationToolBoundary" + System.currentTimeMillis();
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+            conn.setRequestProperty("X-API-Key", "dpw-josm-plugin-2025-secure-key");
             
             try (OutputStream out = conn.getOutputStream();
                  java.io.PrintWriter writer = new java.io.PrintWriter(
@@ -2563,8 +2565,8 @@ public class ValidationToolPanel extends ToggleDialog {
             setSending(true);
             
             // v2.1: Use Vercel-hosted DPW Manager API
-            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://dpw-mauve.vercel.app");
-            String apiUrl = baseUrl + "/api/validation-log";
+            String baseUrl = Preferences.main().get("dpw.api_base_url", "https://app.spatialcollective.com/api");
+            String apiUrl = baseUrl + "/validation-log";
             
             try {
                 Logging.info("DPWValidationTool: Submitting validation data to " + apiUrl);
@@ -2575,6 +2577,7 @@ public class ValidationToolPanel extends ToggleDialog {
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("X-API-Key", "dpw-josm-plugin-2025-secure-key");
                 conn.setDoOutput(true);
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(15000);
