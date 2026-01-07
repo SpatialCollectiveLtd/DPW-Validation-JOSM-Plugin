@@ -66,7 +66,7 @@ public class ValidationToolPanel extends ToggleDialog {
     }
 
     private JTextField taskIdField;
-    private JTextField tmUrlField; // v3.1.0-BETA: TM URL input
+    // v3.3.0: Removed tmUrlField - project URL now auto-saved from remote control
     private JTextField settlementField;
     private JComboBox<String> mapperUsernameComboBox;
     private JTextField totalBuildingsField;
@@ -166,38 +166,12 @@ public class ValidationToolPanel extends ToggleDialog {
         gbc.insets = new Insets(2, 5, 2, 5);
         gbc.anchor = GridBagConstraints.WEST;
 
-        // v3.1.0-BETA: TM URL field (optional, only shown if TM integration enabled)
-        if (PluginSettings.isTMIntegrationEnabled()) {
-            gbc.gridx = 0;
-            gbc.gridy = 0;
-            gbc.fill = GridBagConstraints.NONE;
-            gbc.weightx = 0;
-            JLabel tmLabel = new JLabel("<html><b>TM Project URL:</b></html>");
-            tmLabel.setToolTipText("<html>Tasking Manager project URL<br>" +
-                "Enables Task ID auto-detection from remote control</html>");
-            panel.add(tmLabel, gbc);
+        // v3.3.0: Removed TM URL field from front panel - now only in settings
+        // Project URL is auto-detected and saved via remote control
 
-            gbc.gridx = 1;
-            gbc.gridwidth = 2;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            gbc.weightx = 1.0;
-            tmUrlField = new JTextField();
-            tmUrlField.setToolTipText("<html><b>Tasking Manager Project URL</b><br>" +
-                "Example: https://tasks.hotosm.org/projects/27396<br>" +
-                "This enables Task ID auto-detection when you load tasks via remote control.<br>" +
-                "Set default URL in Tools → DPW Validation Tool Settings to avoid re-entering.</html>");
-            // Pre-fill from default project URL in settings
-            String defaultProjectUrl = PluginSettings.getDefaultProjectUrl();
-            if (defaultProjectUrl != null && !defaultProjectUrl.trim().isEmpty()) {
-                tmUrlField.setText(defaultProjectUrl.trim());
-            }
-            panel.add(tmUrlField, gbc);
-            
-            gbc.gridy++;
-        }
-
-        // Task ID - start at current gridy position (not reset to 0)
+        // Task ID - start at gridy 0
         gbc.gridx = 0;
+        gbc.gridy = 0;
         gbc.gridwidth = 1;
         gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
@@ -420,50 +394,7 @@ public class ValidationToolPanel extends ToggleDialog {
     authStatusLabel.setFont(authStatusLabel.getFont().deriveFont(12f));
     panel.add(authStatusLabel, gbc);
 
-        // v3.0 - Validation Preview Panel (collapsible)
-        gbc.gridx = 0;
-        gbc.gridy++;
-        gbc.gridwidth = 3;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        
-        validationPreviewPanel = new JPanel(new BorderLayout());
-        validationPreviewPanel.setBorder(BorderFactory.createTitledBorder("📊 Validation Summary"));
-        validationPreviewPanel.setVisible(false); // Hidden by default
-        
-        previewTextArea = new JTextArea(8, 40);
-        previewTextArea.setEditable(false);
-        previewTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
-        previewTextArea.setBackground(new Color(250, 250, 255)); // Slightly blue tinted
-        previewTextArea.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(200, 200, 210), 1),
-            BorderFactory.createEmptyBorder(5, 5, 5, 5)
-        ));
-        JScrollPane previewScroll = new JScrollPane(previewTextArea);
-        
-        JButton togglePreviewButton = new JButton("📊 Show Validation Summary");
-        togglePreviewButton.setToolTipText("<html><b>Toggle validation summary</b><br>Shows error breakdown and details before submitting</html>");
-        togglePreviewButton.setPreferredSize(new Dimension(200, 28));
-        togglePreviewButton.setFont(togglePreviewButton.getFont().deriveFont(12f));
-        togglePreviewButton.addActionListener(e -> {
-            previewExpanded = !previewExpanded;
-            if (previewExpanded) {
-                updateValidationPreview();
-                previewScroll.setVisible(true);
-                togglePreviewButton.setText("⚫ Hide Validation Summary");
-            } else {
-                previewScroll.setVisible(false);
-                togglePreviewButton.setText("📊 Show Validation Summary");
-            }
-            validationPreviewPanel.revalidate();
-            validationPreviewPanel.repaint();
-        });
-        
-        validationPreviewPanel.add(togglePreviewButton, BorderLayout.NORTH);
-        validationPreviewPanel.add(previewScroll, BorderLayout.CENTER);
-        previewScroll.setVisible(false);
-        
-        panel.add(validationPreviewPanel, gbc);
-
+        // v3.3.0 - Removed validation summary panel (was collapsible preview)
         // Action Button - Record validation data
         // v3.0.2: Removed Reject button - validators record all work as "Validated"
         // and mark incomplete tasks in HOT Tasking Manager for mapper to fix
@@ -730,17 +661,7 @@ public class ValidationToolPanel extends ToggleDialog {
             public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
         });
 
-        // v3.1.0-BETA: TM URL auto-detection listener
-        if (PluginSettings.isTMIntegrationEnabled() && tmUrlField != null) {
-            tmUrlField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-                private void update() {
-                    handleTMUrlInput();
-                }
-                public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
-                public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
-                public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
-            });
-        }
+        // v3.3.0: Removed TM URL listener - field removed from UI
 
         mapperUsernameComboBox.addItemListener(e -> updateAuthStatus());
     // when mapper selection changes, update the building count shown (mapper-specific)
@@ -2289,27 +2210,53 @@ public class ValidationToolPanel extends ToggleDialog {
     
     /**
      * Ensure the dialog stays visible and functional after session reset.
-     * v3.0.1 - Fix for plugin becoming unresponsive after clearing all layers.
+     * v3.3.0 - Enhanced fix for plugin becoming unresponsive after clearing all layers.
+     * Forces complete UI refresh and panel re-registration.
      * 
      * @param wasVisible whether the dialog was visible before reset
      */
     private void ensureDialogVisible(boolean wasVisible) {
         try {
-            // Force dialog to stay registered and visible
-            if (wasVisible) {
-                // Make sure the dialog is shown
-                if (!isDialogShowing()) {
-                    showDialog();
+            Logging.info("DPWValidationTool: Ensuring dialog remains functional after reset");
+            
+            // v3.3.0: Force complete UI refresh
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    // Rebuild the entire panel to ensure it's responsive
+                    if (wasVisible) {
+                        // Show the dialog if it was visible
+                        if (!isDialogShowing()) {
+                            showDialog();
+                            Logging.info("DPWValidationTool: Dialog shown after reset");
+                        }
+                        
+                        // Force focus to the panel to ensure it's active
+                        requestFocus();
+                        
+                        // Refresh UI components completely
+                        invalidate();
+                        validate();
+                        repaint();
+                        
+                        // Update all UI state
+                        updatePanelData();
+                        updateSubmitButtonsEnabled();
+                        updateAuthStatus();
+                        
+                        Logging.info("DPWValidationTool: Dialog fully refreshed and functional");
+                    } else {
+                        // If dialog wasn't visible, just refresh internal state
+                        invalidate();
+                        validate();
+                        Logging.info("DPWValidationTool: Dialog state refreshed (was not visible)");
+                    }
+                } catch (Exception e) {
+                    Logging.error("DPWValidationTool: Error during UI refresh: " + e.getMessage());
+                    Logging.error(e);
                 }
-                
-                // Repaint to ensure UI is responsive
-                revalidate();
-                repaint();
-                
-                Logging.info("DPWValidationTool: Dialog visibility restored");
-            }
+            });
         } catch (Exception e) {
-            Logging.warn("DPWValidationTool: Could not restore dialog visibility: " + e.getMessage());
+            Logging.warn("DPWValidationTool: Could not ensure dialog visibility: " + e.getMessage());
         }
     }
     
@@ -2916,51 +2863,13 @@ public class ValidationToolPanel extends ToggleDialog {
     // ========================================================================================
 
     /**
-     * Handle TM URL input and auto-populate mapper/task information
+     * v3.3.0: Removed handleTMUrlInput() - TM URL field removed from UI.
+     * Project URL is now automatically detected and saved from remote control.
      */
-    private void handleTMUrlInput() {
-        if (!PluginSettings.isTMIntegrationEnabled() || tmUrlField == null) {
-            return;
-        }
-
-        String tmUrl = tmUrlField.getText().trim();
-        if (tmUrl.isEmpty()) {
-            return;
-        }
-
-        // Parse TM URL in background to avoid blocking UI
-        new Thread(() -> {
-            try {
-                TaskManagerAPIClient.TaskInfo info = TaskManagerAPIClient.fetchTaskInfoFromURL(tmUrl);
-                
-                SwingUtilities.invokeLater(() -> {
-                    if (info.success) {
-                        // Auto-fill task ID
-                        taskIdField.setText(String.valueOf(info.taskId));
-                        
-                        // Auto-select mapper if found
-                        if (info.mapperUsername != null && !info.mapperUsername.isEmpty()) {
-                            selectMapperInComboBox(info.mapperUsername);
-                            
-                            // Auto-fetch settlement if enabled
-                            if (PluginSettings.isAutoFetchSettlement()) {
-                                updateMapperSettlement();
-                            }
-                        }
-                        
-                        Logging.info("TM integration: Auto-populated from " + tmUrl);
-                    } else {
-                        Logging.warn("TM integration: " + info.errorMessage);
-                    }
-                });
-            } catch (Exception e) {
-                Logging.error("TM integration error: " + e.getMessage());
-            }
-        }).start();
-    }
 
     /**
      * Check remote control for TM task information
+     * v3.3.0: Enhanced to auto-save project URL to settings
      * Parses changeset comments for #hotosm-project-XXXXX-task-YYY format
      */
     private void checkRemoteControlForTMTask() {
@@ -3000,6 +2909,15 @@ public class ValidationToolPanel extends ToggleDialog {
 
             Logging.info("TM integration: Detected task from remote control - project " + projectId + " task " + taskId);
 
+            // v3.3.0: Auto-save project URL to settings
+            String detectedProjectUrl = "https://tasks.hotosm.org/projects/" + projectId;
+            String currentProjectUrl = PluginSettings.getDefaultProjectUrl();
+            
+            if (currentProjectUrl == null || !currentProjectUrl.equals(detectedProjectUrl)) {
+                PluginSettings.setDefaultProjectUrl(detectedProjectUrl);
+                Logging.info("TM integration: Auto-saved project URL to settings: " + detectedProjectUrl);
+            }
+
             // Fetch mapper info in background
             new Thread(() -> {
                 TaskManagerAPIClient.TaskInfo info = TaskManagerAPIClient.fetchTaskInfo(projectId, taskId);
@@ -3017,11 +2935,11 @@ public class ValidationToolPanel extends ToggleDialog {
                             }
                         }
                         
-                        // Show notification
+                        // v3.3.0: Enhanced notification with project URL saved
                         JOptionPane.showMessageDialog(
                             ValidationToolPanel.this,
                             "<html><b>Task Manager Task Detected!</b><br>" +
-                            "Project: " + projectId + "<br>" +
+                            "Project: " + projectId + " (URL saved to settings)<br>" +
                             "Task: " + taskId + "<br>" +
                             "Mapper: " + info.mapperUsername + "</html>",
                             "TM Auto-Detection",
