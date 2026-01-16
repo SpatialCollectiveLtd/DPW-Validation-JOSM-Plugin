@@ -4,6 +4,7 @@ import org.openstreetmap.josm.tools.Logging;
 
 import java.awt.Desktop;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
