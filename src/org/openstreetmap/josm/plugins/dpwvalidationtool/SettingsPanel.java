@@ -25,6 +25,14 @@ public class SettingsPanel extends JDialog {
     private JCheckBox remoteControlDetectionCheckbox;
     private JSpinner cacheExpirySpinner;
     
+    // OSM Server Configuration (v3.4.0)
+    private JCheckBox useCustomOSMServerCheckbox;
+    private JTextField osmServerUrlField;
+    private JTextField osmApiEndpointField;
+    private JTextField oauthAuthUrlField;
+    private JTextField oauthTokenUrlField;
+    private JButton applySpatialCollectiveButton;
+    
     public SettingsPanel() {
         super(MainApplication.getMainFrame(), "DPW Validation Tool - Settings", true);
         initComponents();
@@ -157,6 +165,96 @@ public class SettingsPanel extends JDialog {
         mainPanel.add(cacheExpirySpinner, GBC.eol().insets(5, 5, 5, 10));
         row++;
         
+        // OSM Server Configuration Section (v3.4.0)
+        mainPanel.add(new JLabel("<html><b>OSM Server Configuration (Advanced)</b></html>"), 
+            GBC.eol().fill(GBC.HORIZONTAL).insets(0, 15, 0, 5));
+        row++;
+        
+        // Use Custom OSM Server checkbox
+        useCustomOSMServerCheckbox = new JCheckBox("Use Custom OSM Server (instead of openstreetmap.org)");
+        useCustomOSMServerCheckbox.setToolTipText("<html><b>Enable this to use your private OSM instance</b><br>" +
+            "For example: osm.spatialcollective.co.ke<br>" +
+            "⚠ Advanced feature - requires custom OAuth configuration</html>");
+        mainPanel.add(useCustomOSMServerCheckbox, GBC.eol().fill(GBC.HORIZONTAL).insets(5, 5, 5, 5));
+        row++;
+        
+        JLabel warningLabel = new JLabel("<html><i>⚠ Warning: Changing these settings may break authentication if configured incorrectly</i></html>");
+        warningLabel.setForeground(new Color(200, 100, 0));
+        mainPanel.add(new JLabel(""), GBC.std());
+        mainPanel.add(warningLabel, GBC.eol().insets(5, 0, 5, 10));
+        row++;
+        
+        // OSM Server URL
+        mainPanel.add(new JLabel("OSM Server URL:"), GBC.std().insets(5, 5, 5, 5));
+        osmServerUrlField = new JTextField(40);
+        osmServerUrlField.setToolTipText("Base URL of your OSM server (e.g., https://osm.spatialcollective.co.ke)");
+        mainPanel.add(osmServerUrlField, GBC.eol().fill(GBC.HORIZONTAL).insets(5, 5, 5, 5));
+        row++;
+        
+        JLabel osmExample = new JLabel("<html><i>Example: https://osm.spatialcollective.co.ke</i></html>");
+        osmExample.setForeground(Color.GRAY);
+        mainPanel.add(new JLabel(""), GBC.std());
+        mainPanel.add(osmExample, GBC.eol().insets(5, 0, 5, 5));
+        row++;
+        
+        // API Endpoint URL
+        mainPanel.add(new JLabel("API Endpoint URL:"), GBC.std().insets(5, 5, 5, 5));
+        osmApiEndpointField = new JTextField(40);
+        osmApiEndpointField.setToolTipText("OSM API endpoint (usually server URL + /api)");
+        mainPanel.add(osmApiEndpointField, GBC.eol().fill(GBC.HORIZONTAL).insets(5, 5, 5, 5));
+        row++;
+        
+        JLabel apiExample = new JLabel("<html><i>Example: https://osm.spatialcollective.co.ke/api</i></html>");
+        apiExample.setForeground(Color.GRAY);
+        mainPanel.add(new JLabel(""), GBC.std());
+        mainPanel.add(apiExample, GBC.eol().insets(5, 0, 5, 5));
+        row++;
+        
+        // OAuth Authorization URL
+        mainPanel.add(new JLabel("OAuth Authorization URL:"), GBC.std().insets(5, 5, 5, 5));
+        oauthAuthUrlField = new JTextField(40);
+        oauthAuthUrlField.setToolTipText("OAuth 2.0 authorization endpoint");
+        mainPanel.add(oauthAuthUrlField, GBC.eol().fill(GBC.HORIZONTAL).insets(5, 5, 5, 5));
+        row++;
+        
+        JLabel authExample = new JLabel("<html><i>Example: https://osm.spatialcollective.co.ke/oauth2/authorize</i></html>");
+        authExample.setForeground(Color.GRAY);
+        mainPanel.add(new JLabel(""), GBC.std());
+        mainPanel.add(authExample, GBC.eol().insets(5, 0, 5, 5));
+        row++;
+        
+        // OAuth Token URL
+        mainPanel.add(new JLabel("OAuth Token URL:"), GBC.std().insets(5, 5, 5, 5));
+        oauthTokenUrlField = new JTextField(40);
+        oauthTokenUrlField.setToolTipText("OAuth 2.0 token acquisition endpoint");
+        mainPanel.add(oauthTokenUrlField, GBC.eol().fill(GBC.HORIZONTAL).insets(5, 5, 5, 5));
+        row++;
+        
+        JLabel tokenExample = new JLabel("<html><i>Example: https://osm.spatialcollective.co.ke/oauth2/token</i></html>");
+        tokenExample.setForeground(Color.GRAY);
+        mainPanel.add(new JLabel(""), GBC.std());
+        mainPanel.add(tokenExample, GBC.eol().insets(5, 0, 5, 10));
+        row++;
+        
+        // Quick setup button for Spatial Collective
+        applySpatialCollectiveButton = new JButton("📋 Apply Spatial Collective Configuration");
+        applySpatialCollectiveButton.setToolTipText("<html>Click to auto-fill URLs for osm.spatialcollective.co.ke<br>" +
+            "Saves you from typing all the URLs manually</html>");
+        applySpatialCollectiveButton.addActionListener(e -> applySpatialCollectiveConfig());
+        mainPanel.add(new JLabel(""), GBC.std());
+        mainPanel.add(applySpatialCollectiveButton, GBC.eol().fill(GBC.HORIZONTAL).insets(5, 5, 5, 10));
+        row++;
+        
+        // Enable/disable fields based on checkbox
+        useCustomOSMServerCheckbox.addActionListener(e -> {
+            boolean enabled = useCustomOSMServerCheckbox.isSelected();
+            osmServerUrlField.setEnabled(enabled);
+            osmApiEndpointField.setEnabled(enabled);
+            oauthAuthUrlField.setEnabled(enabled);
+            oauthTokenUrlField.setEnabled(enabled);
+            applySpatialCollectiveButton.setEnabled(enabled);
+        });
+        
         // Add flexible space
         mainPanel.add(new JLabel(""), GBC.eol().fill(GBC.BOTH).weight(1.0, 1.0));
         
@@ -224,6 +322,21 @@ public class SettingsPanel extends JDialog {
         autoFetchSettlementCheckbox.setSelected(PluginSettings.isAutoFetchSettlement());
         remoteControlDetectionCheckbox.setSelected(PluginSettings.isRemoteControlDetectionEnabled());
         cacheExpirySpinner.setValue(PluginSettings.getCacheExpiryHours());
+        
+        // Load OSM server configuration (v3.4.0)
+        useCustomOSMServerCheckbox.setSelected(OSMServerConfiguration.isCustomServerEnabled());
+        osmServerUrlField.setText(OSMServerConfiguration.getConfiguredOSMServerUrl());
+        osmApiEndpointField.setText(OSMServerConfiguration.getConfiguredApiEndpointUrl());
+        oauthAuthUrlField.setText(OSMServerConfiguration.getConfiguredAuthorizationUrl());
+        oauthTokenUrlField.setText(OSMServerConfiguration.getConfiguredTokenUrl());
+        
+        // Update field state
+        boolean customEnabled = useCustomOSMServerCheckbox.isSelected();
+        osmServerUrlField.setEnabled(customEnabled);
+        osmApiEndpointField.setEnabled(customEnabled);
+        oauthAuthUrlField.setEnabled(customEnabled);
+        oauthTokenUrlField.setEnabled(customEnabled);
+        applySpatialCollectiveButton.setEnabled(customEnabled);
     }
     
     private void saveSettings() {
@@ -235,6 +348,13 @@ public class SettingsPanel extends JDialog {
         PluginSettings.setAutoFetchSettlement(autoFetchSettlementCheckbox.isSelected());
         PluginSettings.setRemoteControlDetectionEnabled(remoteControlDetectionCheckbox.isSelected());
         PluginSettings.setCacheExpiryHours((Integer) cacheExpirySpinner.getValue());
+        
+        // Save OSM server configuration (v3.4.0)
+        OSMServerConfiguration.setCustomServerEnabled(useCustomOSMServerCheckbox.isSelected());
+        OSMServerConfiguration.setOSMServerUrl(osmServerUrlField.getText().trim());
+        OSMServerConfiguration.setApiEndpointUrl(osmApiEndpointField.getText().trim());
+        OSMServerConfiguration.setAuthorizationUrl(oauthAuthUrlField.getText().trim());
+        OSMServerConfiguration.setTokenUrl(oauthTokenUrlField.getText().trim());
     }
     
     private void resetToDefaults() {
@@ -252,6 +372,27 @@ public class SettingsPanel extends JDialog {
                 "Reset Complete",
                 JOptionPane.INFORMATION_MESSAGE);
         }
+    }
+    
+    /**
+     * Apply Spatial Collective OSM server configuration
+     * Auto-fills all the URLs for osm.spatialcollective.co.ke
+     */
+    private void applySpatialCollectiveConfig() {
+        osmServerUrlField.setText("https://osm.spatialcollective.co.ke");
+        osmApiEndpointField.setText("https://osm.spatialcollective.co.ke/api");
+        oauthAuthUrlField.setText("https://osm.spatialcollective.co.ke/oauth2/authorize");
+        oauthTokenUrlField.setText("https://osm.spatialcollective.co.ke/oauth2/token");
+        useCustomOSMServerCheckbox.setSelected(true);
+        
+        JOptionPane.showMessageDialog(this,
+            "<html><b>Spatial Collective Configuration Applied</b><br><br>" +
+            "Server: osm.spatialcollective.co.ke<br>" +
+            "Don't forget to click 'Save' to apply changes!<br><br>" +
+            "<i>Note: You will need to configure OAuth credentials<br>" +
+            "separately for authentication to work.</i></html>",
+            "Configuration Applied",
+            JOptionPane.INFORMATION_MESSAGE);
     }
     
     /**

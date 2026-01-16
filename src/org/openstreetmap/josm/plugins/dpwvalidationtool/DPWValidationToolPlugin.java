@@ -58,7 +58,16 @@ public class DPWValidationToolPlugin extends Plugin {
             // Add separator
             dpwMenu.addSeparator();
             
-            // 2. Settings
+            // 2. Authentication (v3.4.0 - for custom OSM server)
+            javax.swing.AbstractAction authAction = new javax.swing.AbstractAction("Authenticate...") {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    AuthenticationDialog.showDialog();
+                }
+            };
+            dpwMenu.add(new javax.swing.JMenuItem(authAction));
+            
+            // 3. Settings
             javax.swing.AbstractAction settingsAction = new javax.swing.AbstractAction("Settings...") {
                 @Override
                 public void actionPerformed(ActionEvent e) {
@@ -67,7 +76,7 @@ public class DPWValidationToolPlugin extends Plugin {
             };
             dpwMenu.add(new javax.swing.JMenuItem(settingsAction));
             
-            // 3. Check for Updates
+            // 4. Check for Updates
             javax.swing.AbstractAction updateAction = new javax.swing.AbstractAction("Check for Updates...") {
                 @Override
                 public void actionPerformed(ActionEvent e) {

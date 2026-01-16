@@ -94,6 +94,17 @@ public class ValidationToolPanel extends ToggleDialog {
     private JDialog sendingDialog;
     private boolean submittedThisSession = false;
     
+    /**
+     * Clear the mapper list cache to force a fresh fetch from the API.
+     * Use this when mapper data may have changed (e.g., username updates).
+     * v3.4.1: Added to fix stale cache issue when mappers change usernames.
+     */
+    public static void clearMapperCache() {
+        cachedUserList = null;
+        cacheTimestamp = 0;
+        Logging.info("DPWValidationTool: Mapper cache cleared - next fetch will retrieve fresh data");
+    }
+    
     // v3.0 - Workflow state management
     private ValidationState currentState = ValidationState.IDLE;
     private OsmDataLayer isolatedLayer = null;
@@ -241,7 +252,12 @@ public class ValidationToolPanel extends ToggleDialog {
     refreshMapperListButton = new JButton("🔄");
     refreshMapperListButton.setMargin(new Insets(2,2,2,2));
     refreshMapperListButton.setPreferredSize(new Dimension(28, 24));
-    refreshMapperListButton.setToolTipText("<html><b>Refresh Mapper List</b><br>Download latest authorized mappers from server</html>");
+    refreshMapperListButton.setToolTipText("<html><b>Refresh Mapper List (Force Update)</b><br>" +
+        "Clears cache and downloads fresh list from server.<br>" +
+        "<b>Use this if:</b><br>" +
+        "• A mapper changed their OSM username<br>" +
+        "• A mapper was recently added to the project<br>" +
+        "• You see 'UNAUTHORIZED' for a valid mapper</html>");
     refreshMapperListButton.setFont(refreshMapperListButton.getFont().deriveFont(14f));
     mapperPanel.add(refreshMapperListButton, mpGbc);
     
@@ -293,13 +309,18 @@ public class ValidationToolPanel extends ToggleDialog {
             setFetchingMappers(true);
             new Thread(() -> {
                 try {
+                    // v3.4.1: Force clear cache when user manually refreshes
+                    // This fixes the issue where mappers who changed usernames remain "unauthorized"
+                    clearMapperCache();
+                    Logging.info("DPWValidationTool: User requested refresh - cache cleared");
+                    
                     fetchAuthorizedMappers();
                     SwingUtilities.invokeLater(() -> {
                         updateAuthStatus();
-                        fetchStatusLabel.setText("Success: User list updated. Ready for validation.");
+                        fetchStatusLabel.setText("Success: User list updated (fresh from server). Ready for validation.");
                         fetchStatusLabel.setBackground(new Color(0x88ff88));
                         updateSubmitButtonsEnabled();
-                        JOptionPane.showMessageDialog(null, "Authorized mapper list refreshed (" + authorizedMappers.size() + ")", "Mapper List", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(null, "Authorized mapper list refreshed (" + authorizedMappers.size() + ") - fetched fresh from server", "Mapper List", JOptionPane.INFORMATION_MESSAGE);
                     });
                 } catch (Exception ex) {
                     Logging.error(ex);
@@ -674,9 +695,15 @@ public class ValidationToolPanel extends ToggleDialog {
         SwingUtilities.invokeLater(() -> {
             refreshMapperListButton.setEnabled(!fetching);
             if (fetching) {
-                refreshMapperListButton.setToolTipText("Refreshing authorized mapper list...");
+                refreshMapperListButton.setToolTipText("Refreshing authorized mapper list from server...");
             } else {
-                refreshMapperListButton.setToolTipText("Refresh authorized mapper list");
+                // v3.4.1: Improved tooltip with troubleshooting info
+                refreshMapperListButton.setToolTipText("<html><b>Refresh Mapper List (Force Update)</b><br>" +
+                    "Clears cache and downloads fresh list from server.<br>" +
+                    "<b>Use this if:</b><br>" +
+                    "• A mapper changed their OSM username<br>" +
+                    "• A mapper was recently added to the project<br>" +
+                    "• You see 'UNAUTHORIZED' for a valid mapper</html>");
             }
             updateSubmitButtonsEnabled();
         });
@@ -731,14 +758,20 @@ public class ValidationToolPanel extends ToggleDialog {
         }
         boolean authorized;
         synchronized (authorizedMappers) {
-            authorized = authorizedMappers.contains(sel);
+            // v3.4.1: Use case-insensitive comparison (OSM usernames may differ in case)
+            authorized = authorizedMappers.stream()
+                .anyMatch(user -> user.equalsIgnoreCase(sel));
         }
         if (authorized) {
-            authStatusLabel.setText("Mapper authorization: AUTHORIZED");
+            authStatusLabel.setText("✓ Mapper authorization: AUTHORIZED");
             authStatusLabel.setBackground(new Color(0x88ff88));
         } else {
-            authStatusLabel.setText("Mapper authorization: UNAUTHORIZED");
+            // v3.4.1: More helpful message suggesting to refresh if mapper changed username
+            authStatusLabel.setText("✗ UNAUTHORIZED - Click 🔄 to refresh (mapper may have changed username)");
             authStatusLabel.setBackground(new Color(0xff8888));
+            authStatusLabel.setToolTipText("<html><b>Mapper not found in authorized list</b><br>" +
+                "If the mapper recently changed their OSM username,<br>" +
+                "click the refresh button (🔄) to update the list from the server.</html>");
         }
     }
 
@@ -926,7 +959,7 @@ public class ValidationToolPanel extends ToggleDialog {
             }
             
             SwingUtilities.invokeLater(() -> {
-                fetchStatusLabel.setText("User list loaded from cache");
+                fetchStatusLabel.setText("User list loaded from cache (click 🔄 to refresh from server)");
                 fetchStatusLabel.setBackground(new Color(144, 238, 144));
             });
             return;
@@ -2296,27 +2329,55 @@ public class ValidationToolPanel extends ToggleDialog {
     /**
      * Get the current JOSM user's OSM username from OAuth identity.
      * This replaces the old basic auth method and prevents disconnection warnings.
+     * v3.4.0: Added support for custom OSM server authentication.
      * 
      * @return The current user's OSM username, or null if not authenticated
      */
     private String getCurrentValidator() {
         try {
-            UserIdentityManager userManager = UserIdentityManager.getInstance();
-            
-            // Check authentication status
-            if (userManager.isAnonymous()) {
-                Logging.info("DPWValidationTool: User is anonymous (not authenticated)");
-                return null;
+            // v3.4.0: Check if using custom OSM server
+            if (OSMServerConfiguration.isCustomServerEnabled()) {
+                Logging.info("DPWValidationTool: Using custom OSM server authentication");
+                
+                CustomOAuthClient oauthClient = CustomOAuthClient.getInstance();
+                
+                if (!oauthClient.isAuthenticated()) {
+                    Logging.info("DPWValidationTool: User not authenticated with custom server");
+                    
+                    // Prompt for authentication
+                    boolean authenticated = AuthenticationDialog.ensureAuthenticated();
+                    if (!authenticated) {
+                        return null;
+                    }
+                }
+                
+                String username = oauthClient.getUsername();
+                if (username == null || username.trim().isEmpty()) {
+                    Logging.warn("DPWValidationTool: CustomOAuthClient returned null/empty username");
+                    return null;
+                }
+                
+                Logging.info("DPWValidationTool: Current validator (custom server): " + username);
+                return username.trim();
+            } else {
+                // Use JOSM's standard authentication (openstreetmap.org)
+                UserIdentityManager userManager = UserIdentityManager.getInstance();
+                
+                // Check authentication status
+                if (userManager.isAnonymous()) {
+                    Logging.info("DPWValidationTool: User is anonymous (not authenticated)");
+                    return null;
+                }
+                
+                String username = userManager.getUserName();
+                if (username == null || username.trim().isEmpty()) {
+                    Logging.warn("DPWValidationTool: UserIdentityManager returned null/empty username");
+                    return null;
+                }
+                
+                Logging.info("DPWValidationTool: Current validator (openstreetmap.org): " + username);
+                return username.trim();
             }
-            
-            String username = userManager.getUserName();
-            if (username == null || username.trim().isEmpty()) {
-                Logging.warn("DPWValidationTool: UserIdentityManager returned null/empty username");
-                return null;
-            }
-            
-            Logging.info("DPWValidationTool: Current validator: " + username);
-            return username.trim();
             
         } catch (Exception e) {
             Logging.error("DPWValidationTool: Error getting current validator: " + e.getMessage());
