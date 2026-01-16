@@ -242,7 +242,7 @@ public class ValidationToolPanel extends ToggleDialog {
     mpGbc.weightx = 1.0;
     mpGbc.fill = GridBagConstraints.HORIZONTAL;
     mapperUsernameComboBox = new JComboBox<>();
-    mapperUsernameComboBox.setPreferredSize(new Dimension(220, 24));
+    mapperUsernameComboBox.setPreferredSize(new Dimension(200, 24));
     mapperPanel.add(mapperUsernameComboBox, mpGbc);
 
     // small refresh button stays compact
@@ -260,6 +260,16 @@ public class ValidationToolPanel extends ToggleDialog {
         "• You see 'UNAUTHORIZED' for a valid mapper</html>");
     refreshMapperListButton.setFont(refreshMapperListButton.getFont().deriveFont(14f));
     mapperPanel.add(refreshMapperListButton, mpGbc);
+    
+    // v3.4.2: Add "View List" button to show authorized mappers for debugging
+    mpGbc.gridx = 2;
+    JButton viewMappersButton = new JButton("📋");
+    viewMappersButton.setMargin(new Insets(2,2,2,2));
+    viewMappersButton.setPreferredSize(new Dimension(28, 24));
+    viewMappersButton.setToolTipText("View authorized mapper list (for debugging)");
+    viewMappersButton.setFont(viewMappersButton.getFont().deriveFont(14f));
+    viewMappersButton.addActionListener(e -> showAuthorizedMappersList());
+    mapperPanel.add(viewMappersButton, mpGbc);
     
     panel.add(mapperPanel, gbc);
     
@@ -757,22 +767,86 @@ public class ValidationToolPanel extends ToggleDialog {
             return;
         }
         boolean authorized;
+        String matchedUser = null;
         synchronized (authorizedMappers) {
-            // v3.4.1: Use case-insensitive comparison (OSM usernames may differ in case)
-            authorized = authorizedMappers.stream()
-                .anyMatch(user -> user.equalsIgnoreCase(sel));
+            // v3.4.2: Enhanced matching with trimming and debug logging
+            String selTrimmed = sel.trim();
+            Logging.info("DPWValidationTool: Checking authorization for mapper: '" + sel + "' (length=" + sel.length() + ", trimmed='" + selTrimmed + "')");
+            
+            for (String user : authorizedMappers) {
+                String userTrimmed = user.trim();
+                if (userTrimmed.equalsIgnoreCase(selTrimmed)) {
+                    matchedUser = user;
+                    break;
+                }
+            }
+            authorized = (matchedUser != null);
+            
+            if (!authorized) {
+                // Log some sample authorized usernames for debugging
+                Logging.info("DPWValidationTool: Mapper '" + sel + "' NOT FOUND in " + authorizedMappers.size() + " authorized mappers");
+                if (authorizedMappers.size() <= 10) {
+                    Logging.info("DPWValidationTool: All authorized mappers: " + authorizedMappers);
+                } else {
+                    Logging.info("DPWValidationTool: First 10 authorized mappers: " + authorizedMappers.subList(0, Math.min(10, authorizedMappers.size())));
+                }
+            } else {
+                Logging.info("DPWValidationTool: Mapper '" + sel + "' MATCHED with '" + matchedUser + "'");
+            }
         }
         if (authorized) {
             authStatusLabel.setText("✓ Mapper authorization: AUTHORIZED");
             authStatusLabel.setBackground(new Color(0x88ff88));
+            authStatusLabel.setToolTipText("Mapper '" + sel + "' is authorized (matched: '" + matchedUser + "')");
         } else {
             // v3.4.1: More helpful message suggesting to refresh if mapper changed username
             authStatusLabel.setText("✗ UNAUTHORIZED - Click 🔄 to refresh (mapper may have changed username)");
             authStatusLabel.setBackground(new Color(0xff8888));
-            authStatusLabel.setToolTipText("<html><b>Mapper not found in authorized list</b><br>" +
+            authStatusLabel.setToolTipText("<html><b>Mapper '" + sel + "' not found in authorized list (" + authorizedMappers.size() + " users)</b><br>" +
                 "If the mapper recently changed their OSM username,<br>" +
-                "click the refresh button (🔄) to update the list from the server.</html>");
+                "click the refresh button (🔄) to update the list from the server.<br><br>" +
+                "<i>Check JOSM log (F12) for debug details.</i></html>");
         }
+    }
+    
+    /**
+     * v3.4.2: Show dialog with all authorized mappers for debugging
+     */
+    private void showAuthorizedMappersList() {
+        StringBuilder sb = new StringBuilder();
+        String selectedMapper = (String) mapperUsernameComboBox.getSelectedItem();
+        
+        synchronized (authorizedMappers) {
+            sb.append("Authorized Mappers from DPW API: ").append(authorizedMappers.size()).append(" users\n\n");
+            
+            if (selectedMapper != null && !selectedMapper.isEmpty()) {
+                sb.append("Currently selected: '").append(selectedMapper).append("'\n");
+                boolean found = authorizedMappers.stream()
+                    .anyMatch(u -> u.trim().equalsIgnoreCase(selectedMapper.trim()));
+                sb.append("Match status: ").append(found ? "✓ FOUND" : "✗ NOT FOUND").append("\n\n");
+            }
+            
+            sb.append("--- Full List (sorted) ---\n");
+            List<String> sorted = new ArrayList<>(authorizedMappers);
+            Collections.sort(sorted, String.CASE_INSENSITIVE_ORDER);
+            for (String mapper : sorted) {
+                // Highlight if matches selected
+                if (selectedMapper != null && mapper.trim().equalsIgnoreCase(selectedMapper.trim())) {
+                    sb.append("→ ").append(mapper).append(" ← MATCH\n");
+                } else {
+                    sb.append("  ").append(mapper).append("\n");
+                }
+            }
+        }
+        
+        JTextArea textArea = new JTextArea(sb.toString());
+        textArea.setEditable(false);
+        textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new Dimension(400, 500));
+        
+        JOptionPane.showMessageDialog(null, scrollPane, 
+            "Authorized Mappers List (Debug)", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void addErrorRow(JPanel panel, GridBagConstraints gbc, String labelText, final int index) {
