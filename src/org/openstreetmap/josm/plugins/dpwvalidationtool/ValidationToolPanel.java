@@ -127,6 +127,10 @@ public class ValidationToolPanel extends ToggleDialog {
     private int[] errorCounts = new int[errorTypes.length];
     private JLabel[] errorCountLabels = new JLabel[errorTypes.length];
     
+    // v3.4.3: Track last known layer to detect changes
+    private String lastKnownLayerName = null;
+    private int lastKnownLayerPrimitiveCount = 0;
+    
     public ValidationToolPanel() {
         super(I18n.tr("DPW Validation Tool v" + UpdateChecker.CURRENT_VERSION), "validator", I18n.tr("Open DPW Validation Tool"), null, 150);
         try {
@@ -134,15 +138,9 @@ public class ValidationToolPanel extends ToggleDialog {
             setupUI();
             updatePanelData();
             
-            // v3.1.0-BETA: Setup remote control detection listener
-            if (PluginSettings.isTMIntegrationEnabled() && 
-                PluginSettings.isRemoteControlDetectionEnabled()) {
-                MainApplication.getLayerManager().addActiveLayerChangeListener(e -> {
-                    // v3.3.0: Refresh mapper dropdown when new data is loaded
-                    updatePanelData();
-                    checkRemoteControlForTMTask();
-                });
-            }
+            // v3.4.3: ALWAYS register layer change listener for automatic mapper detection
+            // This ensures the plugin detects new layers from HOT TM remote control
+            setupLayerChangeListeners();
             
             // Kick off an initial authorized-mapper fetch in background with rate limiting
             new Thread(() -> {
@@ -161,9 +159,124 @@ public class ValidationToolPanel extends ToggleDialog {
                     setFetchingMappers(false);
                 }
             }).start();
-            Logging.info("DPWValidationTool: ValidationToolPanel v3.1.0-BETA constructed");
+            Logging.info("DPWValidationTool: ValidationToolPanel v3.4.3 constructed with layer listeners");
         } catch (Throwable t) {
             Logging.error(t);
+        }
+    }
+    
+    /**
+     * v3.4.3: Setup layer change listeners to automatically detect new data from HOT TM.
+     * This enables the plugin to read mappers from newly loaded layers without manual refresh.
+     */
+    private void setupLayerChangeListeners() {
+        try {
+            // Listen for active layer changes (when user switches between layers)
+            MainApplication.getLayerManager().addActiveLayerChangeListener(e -> {
+                Logging.info("DPWValidationTool: Active layer changed");
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        refreshFromCurrentLayer();
+                    } catch (Exception ex) {
+                        Logging.warn("DPWValidationTool: Error on layer change: " + ex.getMessage());
+                    }
+                });
+            });
+            
+            // Listen for layer additions (when new data is loaded via remote control)
+            MainApplication.getLayerManager().addLayerChangeListener(new org.openstreetmap.josm.gui.layer.LayerManager.LayerChangeListener() {
+                @Override
+                public void layerAdded(org.openstreetmap.josm.gui.layer.LayerManager.LayerAddEvent e) {
+                    Logging.info("DPWValidationTool: New layer added: " + e.getAddedLayer().getName());
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            // Small delay to ensure layer data is fully loaded
+                            new Thread(() -> {
+                                try {
+                                    Thread.sleep(500);
+                                    SwingUtilities.invokeLater(() -> refreshFromCurrentLayer());
+                                } catch (InterruptedException ignored) {}
+                            }).start();
+                        } catch (Exception ex) {
+                            Logging.warn("DPWValidationTool: Error on layer add: " + ex.getMessage());
+                        }
+                    });
+                }
+                
+                @Override
+                public void layerRemoving(org.openstreetmap.josm.gui.layer.LayerManager.LayerRemoveEvent e) {
+                    Logging.info("DPWValidationTool: Layer removed: " + e.getRemovedLayer().getName());
+                    // Clear mapper list if all layers are removed
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            DataSet ds = MainApplication.getLayerManager().getEditDataSet();
+                            if (ds == null) {
+                                mapperUsernameComboBox.removeAllItems();
+                                totalBuildingsField.setText("0");
+                                lastKnownLayerName = null;
+                                lastKnownLayerPrimitiveCount = 0;
+                            }
+                        } catch (Exception ex) {
+                            Logging.warn("DPWValidationTool: Error on layer remove: " + ex.getMessage());
+                        }
+                    });
+                }
+                
+                @Override
+                public void layerOrderChanged(org.openstreetmap.josm.gui.layer.LayerManager.LayerOrderChangeEvent e) {
+                    // Not needed for our use case
+                }
+            });
+            
+            Logging.info("DPWValidationTool: Layer change listeners registered successfully");
+        } catch (Exception e) {
+            Logging.error("DPWValidationTool: Failed to setup layer listeners: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * v3.4.3: Refresh mapper dropdown and building count from the current active layer.
+     * Automatically called when layers change or new data is loaded.
+     */
+    private void refreshFromCurrentLayer() {
+        try {
+            DataSet dataSet = MainApplication.getLayerManager().getEditDataSet();
+            if (dataSet == null) {
+                Logging.debug("DPWValidationTool: No edit dataset available");
+                return;
+            }
+            
+            // Get current layer info
+            OsmDataLayer layer = MainApplication.getLayerManager().getActiveDataLayer();
+            String currentLayerName = (layer != null) ? layer.getName() : "unknown";
+            int currentPrimitiveCount = dataSet.allPrimitives().size();
+            
+            // Check if layer actually changed or data was added
+            boolean layerChanged = !currentLayerName.equals(lastKnownLayerName);
+            boolean dataChanged = (currentPrimitiveCount != lastKnownLayerPrimitiveCount);
+            
+            if (layerChanged || dataChanged) {
+                Logging.info("DPWValidationTool: Layer data changed - Layer: " + currentLayerName + 
+                    ", Primitives: " + currentPrimitiveCount + " (was: " + lastKnownLayerPrimitiveCount + ")");
+                
+                // Update tracking
+                lastKnownLayerName = currentLayerName;
+                lastKnownLayerPrimitiveCount = currentPrimitiveCount;
+                
+                // Refresh the mapper dropdown
+                updatePanelData();
+                updateAuthStatus();
+                
+                // Check for TM task info if enabled
+                if (PluginSettings.isTMIntegrationEnabled() && 
+                    PluginSettings.isRemoteControlDetectionEnabled()) {
+                    checkRemoteControlForTMTask();
+                }
+                
+                Logging.info("DPWValidationTool: Mapper list refreshed from layer '" + currentLayerName + "'");
+            }
+        } catch (Exception e) {
+            Logging.warn("DPWValidationTool: Error refreshing from layer: " + e.getMessage());
         }
     }
 
@@ -2118,11 +2231,69 @@ public class ValidationToolPanel extends ToggleDialog {
     
     /**
      * Reset the entire session by clearing all layers and resetting the form.
-     * v3.0 - Provides clean slate for next validation task without restarting JOSM.
+     * v3.4.3 - Improved to prevent crashes and maintain plugin responsiveness.
+     * Now simply resets the form without removing layers - user can load new data via remote control.
      */
     private void resetSession() {
         try {
             Logging.info("DPWValidationTool: User requested session reset");
+            
+            // v3.4.3: Instead of removing layers (which caused crashes), 
+            // just reset the form and clear internal state
+            // User can then load new data via HOT TM remote control
+            
+            // Reset internal tracking
+            lastKnownLayerName = null;
+            lastKnownLayerPrimitiveCount = 0;
+            
+            // Reset the validation form
+            resetValidationSession();
+            
+            // Clear the mapper dropdown
+            SwingUtilities.invokeLater(() -> {
+                mapperUsernameComboBox.removeAllItems();
+                totalBuildingsField.setText("0");
+            });
+            
+            // Show instructions
+            SwingUtilities.invokeLater(() -> {
+                JOptionPane.showMessageDialog(null,
+                    "✓ Form Reset Complete!\n\n" +
+                    "The validation form has been reset.\n\n" +
+                    "To load new data:\n" +
+                    "1. Go to HOT Tasking Manager\n" +
+                    "2. Select a new task and click 'Edit in JOSM'\n" +
+                    "3. The plugin will automatically detect the new mappers\n\n" +
+                    "Note: If you want to clear all layers, use:\n" +
+                    "File → Close All Layers (or press Ctrl+Shift+W)",
+                    "Session Reset",
+                    JOptionPane.INFORMATION_MESSAGE);
+            });
+            
+            Logging.info("DPWValidationTool: Session reset completed successfully");
+            
+        } catch (Exception ex) {
+            Logging.error("DPWValidationTool: Failed to reset session: " + ex.getMessage());
+            Logging.error(ex);
+            
+            SwingUtilities.invokeLater(() -> {
+                JOptionPane.showMessageDialog(null,
+                    "Failed to reset session.\n\n" +
+                    "Error: " + ex.getMessage() + "\n\n" +
+                    "Please try clicking 'Reset Form' or restart JOSM.",
+                    "Reset Failed",
+                    JOptionPane.ERROR_MESSAGE);
+            });
+        }
+    }
+    
+    /**
+     * v3.4.3: Full session reset that also clears layers (use with caution).
+     * Only called when user explicitly requests full layer removal.
+     */
+    private void resetSessionWithLayers() {
+        try {
+            Logging.info("DPWValidationTool: User requested full session reset with layer removal");
             
             // Store dialog visibility state before clearing layers
             boolean wasVisible = isDialogShowing();
@@ -2135,128 +2306,47 @@ public class ValidationToolPanel extends ToggleDialog {
             
             if (allLayers.isEmpty()) {
                 Logging.info("DPWValidationTool: No layers to remove");
-            } else {
-                Logging.info("DPWValidationTool: Removing " + allLayers.size() + " layers");
-                
-                // Show progress for large number of layers
-                if (allLayers.size() > 5) {
-                    SwingUtilities.invokeLater(() -> {
-                        JDialog progressDialog = new JDialog(MainApplication.getMainFrame(), "Resetting Session...", false);
-                        JPanel progressPanel = new JPanel(new BorderLayout(8,8));
-                        progressPanel.setBorder(BorderFactory.createEmptyBorder(16,16,16,16));
-                        JLabel progressLabel = new JLabel("Clearing all layers...");
-                        JProgressBar progressBar = new JProgressBar();
-                        progressBar.setIndeterminate(true);
-                        progressPanel.add(progressLabel, BorderLayout.NORTH);
-                        progressPanel.add(progressBar, BorderLayout.CENTER);
-                        progressDialog.getContentPane().add(progressPanel);
-                        progressDialog.pack();
-                        progressDialog.setLocationRelativeTo(MainApplication.getMainFrame());
-                        progressDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-                        progressDialog.setVisible(true);
-                        
-                        // Remove layers in background
-                        new Thread(() -> {
-                            try {
-                                for (org.openstreetmap.josm.gui.layer.Layer layer : allLayers) {
-                                    try {
-                                        layerManager.removeLayer(layer);
-                                        Thread.sleep(50); // Small delay to avoid overwhelming UI
-                                    } catch (Exception e) {
-                                        Logging.warn("DPWValidationTool: Could not remove layer: " + e.getMessage());
-                                    }
-                                }
-                                
-                                SwingUtilities.invokeLater(() -> {
-                                    progressDialog.dispose();
-                                    
-                                    // Reset the form
-                                    resetValidationSession();
-                                    
-                                    // Ensure dialog stays visible and functional after layer removal
-                                    ensureDialogVisible(wasVisible);
-                                    
-                                    // Show success message
-                                    JOptionPane.showMessageDialog(null,
-                                        "✓ Session Reset Complete!\n\n" +
-                                        "All layers have been cleared.\n" +
-                                        "The form has been reset.\n\n" +
-                                        "You're ready for the next validation task.",
-                                        "Session Reset",
-                                        JOptionPane.INFORMATION_MESSAGE);
-                                    
-                                    Logging.info("DPWValidationTool: Session reset completed successfully");
-                                });
-                            } catch (Exception ex) {
-                                Logging.error("DPWValidationTool: Error during session reset: " + ex.getMessage());
-                                SwingUtilities.invokeLater(() -> {
-                                    progressDialog.dispose();
-                                    JOptionPane.showMessageDialog(null,
-                                        "Session reset completed with some errors.\n\n" +
-                                        "Some layers may not have been removed.\n" +
-                                        "Please check the layer list.",
-                                        "Reset Warning",
-                                        JOptionPane.WARNING_MESSAGE);
-                                });
-                            }
-                        }).start();
-                    });
-                } else {
-                    // Quick reset for few layers
-                    for (org.openstreetmap.josm.gui.layer.Layer layer : allLayers) {
-                        try {
-                            layerManager.removeLayer(layer);
-                        } catch (Exception e) {
-                            Logging.warn("DPWValidationTool: Could not remove layer: " + e.getMessage());
-                        }
-                    }
-                    
-                    // Reset the form
-                    resetValidationSession();
-                    
-                    // Ensure dialog stays visible and functional after layer removal
-                    ensureDialogVisible(wasVisible);
-                    
-                    SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(null,
-                            "✓ Session Reset Complete!\n\n" +
-                            "All layers have been cleared.\n" +
-                            "The form has been reset.\n\n" +
-                            "You're ready for the next validation task.",
-                            "Session Reset",
-                            JOptionPane.INFORMATION_MESSAGE);
-                    });
-                    
-                    Logging.info("DPWValidationTool: Session reset completed successfully");
+                resetValidationSession();
+                return;
+            }
+            
+            Logging.info("DPWValidationTool: Removing " + allLayers.size() + " layers");
+            
+            // Remove layers safely
+            for (org.openstreetmap.josm.gui.layer.Layer layer : allLayers) {
+                try {
+                    layerManager.removeLayer(layer);
+                } catch (Exception e) {
+                    Logging.warn("DPWValidationTool: Could not remove layer: " + e.getMessage());
                 }
             }
             
-        } catch (Exception ex) {
-            Logging.error("DPWValidationTool: Failed to reset session: " + ex.getMessage());
-            Logging.error(ex);
+            // Reset internal tracking
+            lastKnownLayerName = null;
+            lastKnownLayerPrimitiveCount = 0;
             
+            // Reset the form on EDT
             SwingUtilities.invokeLater(() -> {
-                JOptionPane.showMessageDialog(null,
-                    "Failed to reset session automatically.\n\n" +
-                    "Error: " + ex.getMessage() + "\n\n" +
-                    "Please manually:\n" +
-                    "1. Remove all layers from the Layers panel\n" +
-                    "2. Click 'Reset Form' below to clear the form\n\n" +
-                    "Or restart JOSM for a clean state.",
-                    "Reset Failed",
-                    JOptionPane.ERROR_MESSAGE);
-                
-                // Still try to reset the form
-                int choice = JOptionPane.showConfirmDialog(null,
-                    "Would you like to reset the form anyway?",
-                    "Reset Form?",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE);
-                
-                if (choice == JOptionPane.YES_OPTION) {
+                try {
                     resetValidationSession();
+                    ensureDialogVisible(wasVisible);
+                    
+                    JOptionPane.showMessageDialog(null,
+                        "✓ Full Session Reset Complete!\n\n" +
+                        "All layers have been cleared.\n" +
+                        "The form has been reset.\n\n" +
+                        "You're ready for the next validation task.",
+                        "Session Reset",
+                        JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception e) {
+                    Logging.warn("DPWValidationTool: Error in post-reset UI update: " + e.getMessage());
                 }
             });
+            
+            Logging.info("DPWValidationTool: Full session reset completed");
+            
+        } catch (Exception ex) {
+            Logging.error("DPWValidationTool: Failed to reset session with layers: " + ex.getMessage());
         }
     }
     
