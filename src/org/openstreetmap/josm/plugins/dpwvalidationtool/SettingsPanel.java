@@ -12,7 +12,7 @@ import org.openstreetmap.josm.tools.GBC;
  * Settings Panel for DPW Validation Tool Plugin
  * Allows configuration of API endpoints, TM integration, and feature toggles
  * 
- * @version 3.3.0
+ * @version 3.4.4
  */
 public class SettingsPanel extends JDialog {
     
@@ -34,7 +34,7 @@ public class SettingsPanel extends JDialog {
     private JButton applySpatialCollectiveButton;
     
     public SettingsPanel() {
-        super(MainApplication.getMainFrame(), "DPW Validation Tool - Settings", true);
+        super(MainApplication.getMainFrame(), "DPW Validation Tool Settings", true);
         initComponents();
         loadSettings();
     }
@@ -49,7 +49,7 @@ public class SettingsPanel extends JDialog {
         int row = 0;
         
         // Header
-        JLabel headerLabel = new JLabel("<html><b>DPW Validation Tool Settings v3.3.0</b></html>");
+        JLabel headerLabel = new JLabel("<html><b>DPW Validation Tool Settings</b></html>");
         headerLabel.setFont(headerLabel.getFont().deriveFont(Font.BOLD, 14f));
         mainPanel.add(headerLabel, GBC.eol().fill(GBC.HORIZONTAL).insets(0, 0, 0, 15));
         row++;

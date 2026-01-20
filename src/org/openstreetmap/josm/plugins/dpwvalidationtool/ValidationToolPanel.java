@@ -132,7 +132,8 @@ public class ValidationToolPanel extends ToggleDialog {
     private int lastKnownLayerPrimitiveCount = 0;
     
     public ValidationToolPanel() {
-        super(I18n.tr("DPW Validation Tool v" + UpdateChecker.CURRENT_VERSION), "validator", I18n.tr("Open DPW Validation Tool"), null, 150);
+        // v3.4.4: Removed version from title - cleaner UI
+        super(I18n.tr("DPW Validation Tool"), "validator", I18n.tr("Open DPW Validation Tool"), null, 150);
         try {
             Logging.info("DPWValidationTool: constructing ValidationToolPanel v" + UpdateChecker.CURRENT_VERSION);
             setupUI();
@@ -548,8 +549,12 @@ public class ValidationToolPanel extends ToggleDialog {
         "tasks in HOT Tasking Manager for the mapper to fix later.</html>");
     validateButton.setPreferredSize(new Dimension(180, 32));
     validateButton.setFont(validateButton.getFont().deriveFont(Font.BOLD, 13f));
+    // v3.4.4: Fixed button visibility - must set opaque and border painted for custom colors
+    validateButton.setOpaque(true);
+    validateButton.setBorderPainted(false);
+    validateButton.setContentAreaFilled(true);
     validateButton.setBackground(new Color(76, 175, 80)); // Green
-    validateButton.setForeground(Color.WHITE);
+    validateButton.setForeground(Color.BLACK); // Black text for visibility
     validateButton.setFocusPainted(false);
 
     // Use a compact FlowLayout
