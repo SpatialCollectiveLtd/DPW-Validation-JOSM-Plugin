@@ -2627,6 +2627,9 @@ public class ValidationToolPanel extends ToggleDialog {
         String totalBuildings = totalBuildingsField.getText();
         String validatorComments = validatorCommentsArea.getText();
         String settlement = settlementField.getText().trim();
+        
+        // v3.4.4: Get the work date (date of isolation) - this is the date the mapping work was done
+        String workDate = getDateStringFromPicker();
 
         int totalBuildingsInt = 0;
         try {
@@ -2648,6 +2651,11 @@ public class ValidationToolPanel extends ToggleDialog {
         }
         if (settlement != null && !settlement.trim().isEmpty()) {
             jsonBuilder.append("\"settlement\": \"").append(jsonEscape(settlement)).append("\",");
+        }
+        
+        // v3.4.4: Include work_date (date of isolation) - the date the mapping work was done
+        if (workDate != null && !workDate.trim().isEmpty() && !workDate.equals("YYYY-MM-DD")) {
+            jsonBuilder.append("\"work_date\": \"").append(jsonEscape(workDate)).append("\",");
         }
         
         // Required fields (per API spec)

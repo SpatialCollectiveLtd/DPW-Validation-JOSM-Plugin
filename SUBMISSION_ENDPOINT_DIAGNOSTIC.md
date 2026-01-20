@@ -85,6 +85,7 @@ The plugin sends this JSON structure:
 {
   "task_id": "optional - only if provided",
   "settlement": "optional - only if provided",
+  "work_date": "YYYY-MM-DD format - the date the mapping work was done (v3.4.4+)",
   "mapper_osm_username": "required",
   "validator_osm_username": "required",
   "total_buildings": 123,
@@ -114,6 +115,7 @@ The plugin sends this JSON structure:
 **Optional Fields:**
 - `task_id` - String (e.g., "123", "TM-456")
 - `settlement` - String (e.g., "Kampala", "Nairobi")
+- `work_date` - String in YYYY-MM-DD format (the date the mapping work was done)
 - `validator_comments` - String
 - All `error_*` fields - Integers (default to 0 if not provided)
 
@@ -300,6 +302,7 @@ X-API-Key: dpw-josm-plugin-2025-secure-key
 {
   "task_id": "123",
   "settlement": "Kampala",
+  "work_date": "2026-01-15",
   "mapper_osm_username": "john_mapper",
   "validator_osm_username": "jane_validator",
   "total_buildings": 50,
